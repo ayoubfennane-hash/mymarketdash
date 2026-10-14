@@ -1,12 +1,17 @@
 import type { Dataset, Product } from "./data";
 export type Filters = {
   search: string;
-  supplier: string;
+  suppliers: string[];
   status: string;
   category?: string;
   from: number;
   to: number;
 };
+export function toggleSupplierSelection(selected: string[], name: string) {
+  return selected.includes(name)
+    ? selected.filter((value) => value !== name)
+    : [...selected, name];
+}
 export type ProductView = Product & {
   periodUnits: number;
   periodAmount: number;
@@ -17,6 +22,7 @@ export function selectProducts(
   filters: Filters,
 ): ProductView[] {
   const query = filters.search.trim().toLocaleLowerCase("fr");
+  const suppliers = new Set(filters.suppliers);
   return dataset.products
     .filter(
       (p) =>
@@ -24,7 +30,7 @@ export function selectProducts(
           `${p.title} ${p.sku} ${p.supplier}`
             .toLocaleLowerCase("fr")
             .includes(query)) &&
-        (!filters.supplier || p.supplier === filters.supplier) &&
+        (suppliers.size === 0 || suppliers.has(p.supplier)) &&
         (!filters.category || p.categories.includes(filters.category)) &&
         (!filters.status || p.status === filters.status),
     )

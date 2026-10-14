@@ -4,6 +4,7 @@ import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import App from "../src/App";
+import { parseWorkbook } from "../src/data";
 vi.mock("recharts", () => ({
   Area: () => null,
   AreaChart: () => null,
@@ -304,5 +305,146 @@ describe("Corrections d’accessibilité", () => {
     );
     await click(host.querySelector(".reading-aid .text-button")!);
     expect(host.querySelector(".guide-layout")).not.toBeNull();
+  });
+  it("sélectionne plusieurs fournisseurs, recherche sans perte de choix et ferme avec Échap", async () => {
+    await render();
+    const trigger = host.querySelector<HTMLButtonElement>(
+      'button[aria-label="Choisir plusieurs fournisseurs"]',
+    )!;
+    expect(trigger.textContent).toContain("Tous les fournisseurs");
+    await click(trigger);
+    const query = host.querySelector<HTMLInputElement>(
+      'input[aria-label="Rechercher un fournisseur"]',
+    )!;
+    expect(document.activeElement).toBe(query);
+    const check = (name: string) =>
+      Array.from(
+        host.querySelectorAll<HTMLLabelElement>(".supplier-options label"),
+      )
+        .find((l) => l.textContent?.trim() === name)!
+        .querySelector<HTMLInputElement>('input[type="checkbox"]')!;
+    await click(check("Primeur"));
+    await click(check("Valencia"));
+    expect(check("Primeur").checked).toBe(true);
+    expect(check("Valencia").checked).toBe(true);
+    expect(trigger.textContent).toContain("2 fournisseurs");
+    const data = parseWorkbook(buffer, "test");
+    const count = data.products.filter((p) =>
+      ["Primeur", "Valencia"].includes(p.supplier),
+    ).length;
+    expect(host.querySelector(".filter-foot")?.textContent).toContain(
+      count.toLocaleString("fr-FR"),
+    );
+    expect(host.querySelector(".reading-summary")?.textContent).toContain(
+      `${count.toLocaleString("fr-FR")} références`,
+    );
+    expect(
+      Array.from(host.querySelectorAll(".supplier-cell")).every((el) =>
+        ["Primeur", "Valencia"].includes(el.textContent!),
+      ),
+    ).toBe(true);
+    await act(async () => {
+      Object.getOwnPropertyDescriptor(
+        HTMLInputElement.prototype,
+        "value",
+      )!.set!.call(query, "Valencia");
+      query.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    expect(
+      host.querySelectorAll('.supplier-options input[type="checkbox"]'),
+    ).toHaveLength(1);
+    expect(check("Valencia").checked).toBe(true);
+    await act(async () => {
+      Object.getOwnPropertyDescriptor(
+        HTMLInputElement.prototype,
+        "value",
+      )!.set!.call(query, "absent-fournisseur-zzz");
+      query.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    expect(host.querySelector(".supplier-no-results")).not.toBeNull();
+    expect(trigger.textContent).toContain("2 fournisseurs");
+    await act(async () =>
+      query.dispatchEvent(
+        new KeyboardEvent("keydown", { key: "Escape", bubbles: true }),
+      ),
+    );
+    expect(host.querySelector(".supplier-select-panel")).toBeNull();
+    expect(document.activeElement).toBe(trigger);
+    await click(
+      host.querySelector(
+        'button[aria-label="Retirer le fournisseur Valencia"]',
+      )!,
+    );
+    expect(trigger.textContent).toContain("Primeur");
+    expect(
+      host.querySelector(".supplier-selection-bar")?.textContent,
+    ).not.toContain("Valencia");
+    await click(host.querySelector(".supplier-clear-all")!);
+    expect(trigger.textContent).toContain("Tous les fournisseurs");
+    expect(host.querySelector(".filter-foot")?.textContent).toContain("2 612");
+  });
+  it("préserve plusieurs fournisseurs en passant par le guide puis réinitialise tous les filtres", async () => {
+    await render();
+    const trigger = host.querySelector<HTMLButtonElement>(
+      'button[aria-label="Choisir plusieurs fournisseurs"]',
+    )!;
+    await click(trigger);
+    const check = (name: string) =>
+      Array.from(
+        host.querySelectorAll<HTMLLabelElement>(".supplier-options label"),
+      )
+        .find((l) => l.textContent?.trim() === name)!
+        .querySelector<HTMLInputElement>('input[type="checkbox"]')!;
+    await click(check("Primeur"));
+    await click(check("Valencia"));
+    await click(
+      host.querySelector<HTMLButtonElement>(".supplier-select-footer button")!,
+    );
+    expect(host.querySelector(".supplier-select-panel")).toBeNull();
+    await click(
+      host.querySelector('nav button[aria-label="Guide d’utilisation"]')!,
+    );
+    expect(host.querySelector(".guide-layout")?.textContent).toContain(
+      "l’un OU l’autre fournisseur",
+    );
+    await click(host.querySelector('nav button[aria-label="Vue d’ensemble"]')!);
+    expect(
+      host.querySelector(".supplier-select-trigger")?.textContent,
+    ).toContain("2 fournisseurs");
+    await click(host.querySelector(".filter-foot .text-button")!);
+    expect(
+      host.querySelector(".supplier-select-trigger")?.textContent,
+    ).toContain("Tous les fournisseurs");
+    expect(host.querySelector(".supplier-selection-bar")).toBeNull();
+  });
+  it("ferme la liste au clic extérieur et permet tous les fournisseurs sans changer la catégorie", async () => {
+    await render();
+    const trigger = host.querySelector<HTMLButtonElement>(
+      'button[aria-label="Choisir plusieurs fournisseurs"]',
+    )!;
+    const category = host.querySelector<HTMLSelectElement>(
+      'select[aria-label="Catégorie (CSV)"]',
+    )!;
+    await act(async () => {
+      category.value = "Alimentation";
+      category.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+    await click(trigger);
+    const label = Array.from(
+      host.querySelectorAll<HTMLLabelElement>(".supplier-options label"),
+    ).find((l) => l.textContent?.trim() === "Valencia")!;
+    await click(label.querySelector("input")!);
+    await act(async () =>
+      document.body.dispatchEvent(new Event("pointerdown", { bubbles: true })),
+    );
+    expect(host.querySelector(".supplier-select-panel")).toBeNull();
+    await click(trigger);
+    await click(host.querySelector(".supplier-select-tools button")!);
+    expect(category.value).toBe("Alimentation");
+    expect(trigger.textContent).toContain("Tous les fournisseurs");
+    expect(host.querySelector(".filter-foot")?.textContent).toContain("1 241");
+    expect(
+      host.querySelectorAll(".supplier-options input:checked"),
+    ).toHaveLength(0);
   });
 });

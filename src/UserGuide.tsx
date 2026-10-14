@@ -214,8 +214,11 @@ export default function UserGuide({
               <h3>Combinez vos critères</h3>
               <p>
                 Recherchez un produit, un SKU ou un fournisseur, puis ajoutez
-                une catégorie, un fournisseur, un état et une période. Les
-                critères se cumulent : toutes les conditions doivent être
+                une catégorie, un ou plusieurs fournisseurs, un état et une
+                période. Dans le menu fournisseur, recherchez puis cochez vos
+                choix : un produit de l’un OU l’autre fournisseur est retenu.
+                Sans case cochée, tous les fournisseurs sont inclus. Les autres
+                critères se cumulent : toutes leurs conditions doivent être
                 satisfaites. « Réinitialiser les filtres » retrouve l’ensemble
                 du classeur.
               </p>
@@ -233,11 +236,12 @@ export default function UserGuide({
             <article>
               <h3>Cliquez pour explorer</h3>
               <p>
-                Une barre de catégorie, un état ou un fournisseur applique son
-                filtre. Cliquez à nouveau pour le retirer. Les menus proposent
-                également les mêmes critères au clavier. Le filtre catégorie
-                reste combiné aux autres filtres : un résultat vide est
-                possible.
+                Une barre de catégorie ou un état applique son filtre ; cliquez
+                à nouveau pour le retirer. Une barre fournisseur ajoute ou
+                retire ce fournisseur sans effacer les autres choix. Les menus
+                proposent également les mêmes critères au clavier. Le filtre
+                catégorie reste combiné aux autres filtres : un résultat vide
+                est possible.
               </p>
             </article>
             <article>

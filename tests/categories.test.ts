@@ -20,7 +20,7 @@ const data = parseWorkbook(
 );
 const base = {
   search: "",
-  supplier: "",
+  suppliers: [] as string[],
   status: "",
   category: "",
   from: 0,
@@ -118,7 +118,7 @@ describe("Catégories du CSV fourni", () => {
     const products = selectProducts(data, {
       ...base,
       category: "Alimentation",
-      supplier: "Valencia",
+      suppliers: ["Valencia"],
       from: 0,
       to: 0,
     });

@@ -41,6 +41,7 @@ import { useDialogFocus } from "./useDialogFocus";
 import CategoryPanel from "./CategoryPanel";
 import UserGuide from "./UserGuide";
 import ReadingAid from "./ReadingAid";
+import SupplierSelect from "./SupplierSelect";
 import {
   CATEGORY_SOURCE,
   categoryExplanation,
@@ -57,6 +58,7 @@ import {
   selectProducts,
   statusDistribution,
   summarize,
+  toggleSupplierSelection,
   type ProductView,
 } from "./analytics";
 
@@ -85,7 +87,7 @@ export default function App() {
     "overview" | "catalogue" | "quality" | "guide"
   >("overview");
   const [search, setSearch] = useState("");
-  const [supplier, setSupplier] = useState("");
+  const [selectedSuppliers, setSelectedSuppliers] = useState<string[]>([]);
   const [category, setCategory] = useState("");
   const [status, setStatus] = useState("");
   const [from, setFrom] = useState(0);
@@ -110,7 +112,7 @@ export default function App() {
   function applyData(next: Dataset) {
     setDataset(next);
     setSearch("");
-    setSupplier("");
+    setSelectedSuppliers([]);
     setCategory("");
     setStatus("");
     setFrom(0);
@@ -149,7 +151,7 @@ export default function App() {
   }, []);
   useEffect(() => {
     setPage(0);
-  }, [search, supplier, category, status, from, to, dataset]);
+  }, [search, selectedSuppliers, category, status, from, to, dataset]);
   useEffect(() => {
     if (!selected) return;
     const onKey = (e: KeyboardEvent) => {
@@ -190,21 +192,21 @@ export default function App() {
       dataset
         ? selectProducts(dataset, {
             search,
-            supplier,
+            suppliers: selectedSuppliers,
             category,
             status,
             from,
             to,
           })
         : [],
-    [dataset, search, supplier, category, status, from, to],
+    [dataset, search, selectedSuppliers, category, status, from, to],
   );
   const stats = useMemo(() => summarize(filtered), [filtered]);
   const trend = useMemo(
     () => (dataset ? makeTrend(dataset, filtered, from, to) : []),
     [dataset, filtered, from, to],
   );
-  const suppliers = useMemo(
+  const supplierOptions = useMemo(
     () =>
       dataset
         ? [...new Set(dataset.products.map((p) => p.supplier))].sort((a, b) =>
@@ -260,7 +262,7 @@ export default function App() {
   const tableRows = sorted.slice(currentPage * 12, currentPage * 12 + 12);
   const hasFilters =
     !!search ||
-    !!supplier ||
+    selectedSuppliers.length > 0 ||
     !!category ||
     !!status ||
     from !== 0 ||
@@ -268,7 +270,7 @@ export default function App() {
   const metricLabel = metric === "amount" ? "Montant source" : "Unités";
   function reset() {
     setSearch("");
-    setSupplier("");
+    setSelectedSuppliers([]);
     setCategory("");
     setStatus("");
     setFrom(0);
@@ -588,18 +590,12 @@ export default function App() {
                       ))}
                     </select>
                   </label>
-                  <label>
-                    <span>Fournisseur</span>
-                    <select
-                      value={supplier}
-                      onChange={(e) => setSupplier(e.target.value)}
-                    >
-                      <option value="">Tous les fournisseurs</option>
-                      {suppliers.map((s) => (
-                        <option key={s}>{s}</option>
-                      ))}
-                    </select>
-                  </label>
+                  <SupplierSelect
+                    options={supplierOptions}
+                    selected={selectedSuppliers}
+                    onChange={setSelectedSuppliers}
+                  />
+
                   <label>
                     <span>État du stock</span>
                     <select
@@ -647,6 +643,36 @@ export default function App() {
                     </select>
                   </label>
                 </div>
+                {selectedSuppliers.length > 0 && (
+                  <div
+                    className="supplier-selection-bar"
+                    aria-label="Fournisseurs sélectionnés"
+                  >
+                    <span>Fournisseurs inclus :</span>
+                    {selectedSuppliers.map((name) => (
+                      <button
+                        key={name}
+                        type="button"
+                        onClick={() =>
+                          setSelectedSuppliers((current) =>
+                            toggleSupplierSelection(current, name),
+                          )
+                        }
+                        aria-label={`Retirer le fournisseur ${name}`}
+                      >
+                        {name}
+                        <X size={12} aria-hidden="true" />
+                      </button>
+                    ))}
+                    <button
+                      className="supplier-clear-all"
+                      type="button"
+                      onClick={() => setSelectedSuppliers([])}
+                    >
+                      Tous les fournisseurs
+                    </button>
+                  </div>
+                )}
                 <div className="filter-foot">
                   <span>
                     <strong>{fmt(filtered.length)}</strong> /{" "}
@@ -1034,18 +1060,23 @@ export default function App() {
                                   payload?: { name: string };
                                 };
                                 const n = d.name || d.payload?.name;
-                                if (n) setSupplier(supplier === n ? "" : n);
+                                if (n)
+                                  setSelectedSuppliers((current) =>
+                                    toggleSupplierSelection(current, n),
+                                  );
                               }}
                             >
                               {ranking.map((r, i) => (
                                 <Cell
                                   key={r.name}
                                   fill={
-                                    i === 0
-                                      ? "#267c68"
-                                      : i === 1
-                                        ? "#559982"
-                                        : "#97bdab"
+                                    selectedSuppliers.includes(r.name)
+                                      ? "#12645c"
+                                      : i === 0
+                                        ? "#267c68"
+                                        : i === 1
+                                          ? "#559982"
+                                          : "#97bdab"
                                   }
                                 />
                               ))}
@@ -1057,7 +1088,8 @@ export default function App() {
                       )}
                     </div>
                     <p className="panel-hint">
-                      Cliquez sur une barre pour explorer un fournisseur.
+                      Cliquez sur une barre pour ajouter ou retirer un
+                      fournisseur de la sélection. Plusieurs choix se combinent.
                     </p>
                   </section>
                 </>
