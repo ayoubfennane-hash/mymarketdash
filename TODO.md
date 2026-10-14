@@ -24,3 +24,10 @@
 Compilation TypeScript et build Vite réussis. Sept tests de données réelles et quatre tests DOM ciblés réussis. Contrôle en lecture seule de la cohérence de l’application, puis correction des quatre points d’accessibilité/état confirmés. Le manifeste de route, la page et le classeur source répondent HTTP 200 en local et via l’aperçu ; l’empreinte du classeur servi correspond à la source.
 
 La devise n’est pas précisée dans le fichier et n’est pas supposée. Le stock reste un instantané source, indépendant de la période mensuelle. Le site n’est pas publié et la publication automatique est désactivée.
+
+## Ajout demandé : catégories à partir de MYMARKET.ma
+
+- [x] **Catégoriser les références selon les rayons MYMARKET.ma** — Reprendre les noms des rayons de la boutique officielle, rapprocher les produits par SKU ou titre lorsque le catalogue public le permet et rendre explicite la provenance de chaque classement. Ne pas présenter une proposition locale comme une attribution officielle ; les références sans correspondance fiable restent « À classer ».
+- [x] **Explorer et exporter les catégories** — Ajouter un filtre catégorie synchronisé avec les KPI, graphiques et tableaux, une visualisation par catégorie, ainsi que la catégorie dans le catalogue, la fiche produit et l’export CSV. Conserver le comportement responsive, les filtres existants et les totaux du classeur.
+
+Ajout livré : 2 802 produits publics indexés sur 11 collections ; 2 506 correspondances SKU et 25 correspondances de titre exact normalisé (2 531 références), 81 références conservées dans « À classer ». Les appartenances multiples officielles sont préservées. Catégorie présente dans le filtre, la répartition interactive, le catalogue triable, la fiche produit et l’export CSV ; source, méthode et date visibles dans la qualité des données. Compilation Vite/TypeScript et 17 tests réussis, dont filtre catégorie et absence de double comptage dans les KPI. Aucun changement au classeur source.

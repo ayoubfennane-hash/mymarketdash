@@ -1523,3 +1523,238 @@ th[aria-sort="descending"] {
   color: #267c68;
   font-weight: 700;
 }
+
+/* Catégories issues du catalogue public MYMARKET.ma */
+.filter-grid {
+  grid-template-columns: 1.2fr 1.2fr 1fr 0.9fr 0.85fr 0.85fr;
+}
+.category-source-note {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #80947a;
+  font-size: 9px;
+  margin: -7px 0 21px;
+  line-height: 1.6;
+}
+.category-source-note svg {
+  flex-shrink: 0;
+}
+.category-source-note strong {
+  font-weight: 600;
+  color: #4a7050;
+}
+.category-source-note button {
+  border: 0;
+  background: none;
+  display: inline-flex;
+  gap: 5px;
+  align-items: center;
+  color: #4f7959;
+  font-size: 9px;
+  margin-left: auto;
+  white-space: nowrap;
+  padding: 0;
+}
+.category-panel {
+  margin-bottom: 22px;
+}
+.category-panel-body {
+  display: flex;
+  gap: 26px;
+  align-items: center;
+}
+.category-chart {
+  flex: 1.4;
+  min-width: 0;
+}
+.category-summary {
+  flex: 1;
+  min-width: 0;
+}
+.category-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-top: 14px;
+}
+.category-chips button {
+  border: 1px solid #e3eadf;
+  background: #f8faf5;
+  padding: 8px 10px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 9px;
+  color: #78936c;
+  transition: background 0.15s;
+}
+.category-chips button strong {
+  font-size: 10px;
+  color: #476d47;
+}
+.category-chips button:hover,
+.category-chips button.chosen {
+  background: #e4f0e1;
+  border-color: #9dbb94;
+}
+.category-summary p {
+  font-size: 9px;
+  line-height: 1.8;
+  color: #9da990;
+  margin-top: 18px;
+}
+.source-link {
+  color: #75936b;
+}
+.category-cell {
+  min-width: 130px;
+  max-width: 180px;
+}
+.category-tag {
+  border: 1px solid #e0e9db;
+  background: #f5f8ef;
+  color: #789163;
+  font-size: 8px;
+  border-radius: 4px;
+  padding: 4px 6px;
+  margin: 2px 3px 2px 0;
+  white-space: normal;
+  text-align: left;
+}
+.category-tag:hover {
+  background: #e4f0da;
+}
+.category-tag.unmatched {
+  background: #fcf5e7;
+  color: #ad9154;
+  border-color: #f0e1bf;
+}
+.category-quality {
+  padding: 18px 0 8px;
+  border-top: 1px solid #e7edde;
+  margin-top: 20px;
+}
+.category-quality h3 {
+  font-size: 13px;
+  font-weight: 600;
+}
+.category-quality p {
+  font-size: 10px;
+  line-height: 1.8;
+  color: #849972;
+}
+.category-source-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+.category-source-links a {
+  padding: 4px 7px;
+  border: 1px solid #e2e8d9;
+  font-size: 9px;
+  border-radius: 4px;
+  color: #7a9866;
+}
+.category-source-links a:hover {
+  background: #edf4e5;
+}
+.detail-category {
+  background: #f4f7ee;
+  border-radius: 8px;
+  padding: 14px 16px;
+  margin-top: 17px;
+}
+.detail-category > span {
+  font-size: 12px;
+  font-weight: 600;
+  color: #638952;
+}
+.detail-category p {
+  font-size: 9px;
+  line-height: 1.8;
+  color: #92a57f;
+  margin: 8px 0 0;
+}
+.detail-category a {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: #668d51;
+}
+.table-scroll > table {
+  min-width: 870px;
+}
+@media (max-width: 1200px) {
+  .filter-grid {
+    grid-template-columns: 1.2fr 1.2fr 1fr;
+  }
+  .category-panel-body {
+    gap: 18px;
+  }
+  .category-summary {
+    flex: 0.9;
+  }
+}
+@media (max-width: 960px) {
+  .category-panel-body {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .category-chart {
+    flex: auto;
+  }
+  .category-summary {
+    flex: auto;
+  }
+  .category-summary p {
+    margin-top: 12px;
+  }
+}
+@media (max-width: 700px) {
+  .filter-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+  .filter-grid .search-field {
+    grid-column: span 2;
+  }
+  .filter-grid label:last-child {
+    grid-column: span 2;
+  }
+  .category-source-note {
+    align-items: flex-start;
+    flex-wrap: wrap;
+    font-size: 8px;
+    margin-top: -4px;
+    gap: 6px;
+  }
+  .category-source-note span {
+    flex: 1;
+  }
+  .category-source-note button {
+    margin-left: 20px;
+  }
+  .category-source-note svg {
+    margin-top: 2px;
+  }
+  .category-chips button {
+    font-size: 8px;
+    padding: 7px 8px;
+  }
+  .category-panel .panel-heading {
+    align-items: flex-start;
+  }
+  .category-summary p {
+    font-size: 9px;
+  }
+  .category-quality p {
+    font-size: 10px;
+  }
+  .detail-category {
+    padding: 12px;
+  }
+  .detail-category > span {
+    font-size: 11px;
+  }
+}

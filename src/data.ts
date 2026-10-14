@@ -1,7 +1,8 @@
 import * as XLSX from "xlsx";
+import { matchCategory, type CategoryMatch } from "./categories";
 
 export type Month = { label: string; long: string; date: string };
-export type Product = {
+export type Product = CategoryMatch & {
   id: number;
   title: string;
   sku: string;
@@ -131,6 +132,10 @@ export function parseWorkbook(buffer: ArrayBuffer, name: string): Dataset {
       title: String(row[0]).trim(),
       sku: row[1] == null ? "—" : String(row[1]),
       supplier: missingSupplier ? "Non renseigné" : String(row[2]).trim(),
+      ...matchCategory(
+        row[1] == null ? "—" : String(row[1]),
+        String(row[0]).trim(),
+      ),
       location: row[3] ? String(row[3]).trim() : "Non renseigné",
       stock,
       status: row[5] ? String(row[5]).trim() : "Non renseigné",
@@ -175,6 +180,13 @@ export function parseWorkbook(buffer: ArrayBuffer, name: string): Dataset {
   if (mismatch)
     warnings.push(
       `${mismatch} références présentent un écart entre leur total source et la somme mensuelle ; la période filtrée utilise les colonnes mensuelles.`,
+    );
+  const unmatchedCategories = products.filter(
+    (p) => p.categoryMethod === "unmatched",
+  ).length;
+  if (unmatchedCategories)
+    warnings.push(
+      `${unmatchedCategories.toLocaleString("fr-FR")} références sans correspondance fiable sur MYMARKET.ma, conservées dans « À classer ».`,
     );
   if (skipped) warnings.push(`${skipped} lignes sans titre ignorées.`);
   return {

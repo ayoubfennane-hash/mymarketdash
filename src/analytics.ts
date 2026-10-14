@@ -3,6 +3,7 @@ export type Filters = {
   search: string;
   supplier: string;
   status: string;
+  category?: string;
   from: number;
   to: number;
 };
@@ -24,6 +25,7 @@ export function selectProducts(
             .toLocaleLowerCase("fr")
             .includes(query)) &&
         (!filters.supplier || p.supplier === filters.supplier) &&
+        (!filters.category || p.categories.includes(filters.category)) &&
         (!filters.status || p.status === filters.status),
     )
     .map((p) => ({
@@ -48,15 +50,13 @@ export function makeTrend(
   from: number,
   to: number,
 ) {
-  return dataset.months
-    .slice(from, to + 1)
-    .map((month, offset) => ({
-      month: month.label,
-      long: month.long,
-      index: from + offset,
-      amount: sum(products.map((p) => p.amounts[from + offset])),
-      units: sum(products.map((p) => p.units[from + offset])),
-    }));
+  return dataset.months.slice(from, to + 1).map((month, offset) => ({
+    month: month.label,
+    long: month.long,
+    index: from + offset,
+    amount: sum(products.map((p) => p.amounts[from + offset])),
+    units: sum(products.map((p) => p.units[from + offset])),
+  }));
 }
 export function groupSuppliers(
   products: ProductView[],
@@ -78,6 +78,15 @@ export function statusDistribution(products: ProductView[]) {
   const map = new Map<string, number>();
   products.forEach((p) => map.set(p.status, (map.get(p.status) || 0) + 1));
   return Array.from(map, ([name, value]) => ({ name, value }));
+}
+export function categoryDistribution(products: ProductView[]) {
+  const map = new Map<string, number>();
+  products.forEach((p) =>
+    p.categories.forEach((name) => map.set(name, (map.get(name) || 0) + 1)),
+  );
+  return Array.from(map, ([name, value]) => ({ name, value })).sort(
+    (a, b) => b.value - a.value,
+  );
 }
 export const formatNumber = (n: number, decimals = 0) =>
   new Intl.NumberFormat("fr-FR", {

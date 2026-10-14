@@ -37,6 +37,8 @@ import {
 } from "recharts";
 import { parseWorkbook, type Dataset } from "./data";
 import { useDialogFocus } from "./useDialogFocus";
+import CategoryPanel from "./CategoryPanel";
+import { CATEGORY_SOURCE, categoryExplanation } from "./categories";
 import {
   compactNumber,
   formatNumber as fmt,
@@ -74,13 +76,14 @@ export default function App() {
   );
   const [search, setSearch] = useState("");
   const [supplier, setSupplier] = useState("");
+  const [category, setCategory] = useState("");
   const [status, setStatus] = useState("");
   const [from, setFrom] = useState(0);
   const [to, setTo] = useState(9);
   const [metric, setMetric] = useState<"amount" | "units">("amount");
   const [page, setPage] = useState(0);
   const [sort, setSort] = useState<{
-    key: "periodAmount" | "periodUnits" | "stock" | "title";
+    key: "periodAmount" | "periodUnits" | "stock" | "title" | "category";
     desc: boolean;
   }>({ key: "periodAmount", desc: true });
   const [selected, setSelected] = useState<ProductView | null>(null);
@@ -98,6 +101,7 @@ export default function App() {
     setDataset(next);
     setSearch("");
     setSupplier("");
+    setCategory("");
     setStatus("");
     setFrom(0);
     setTo(allMonths(next));
@@ -135,7 +139,7 @@ export default function App() {
   }, []);
   useEffect(() => {
     setPage(0);
-  }, [search, supplier, status, from, to, dataset]);
+  }, [search, supplier, category, status, from, to, dataset]);
   useEffect(() => {
     if (!selected) return;
     const onKey = (e: KeyboardEvent) => {
@@ -174,9 +178,16 @@ export default function App() {
   const filtered = useMemo(
     () =>
       dataset
-        ? selectProducts(dataset, { search, supplier, status, from, to })
+        ? selectProducts(dataset, {
+            search,
+            supplier,
+            category,
+            status,
+            from,
+            to,
+          })
         : [],
-    [dataset, search, supplier, status, from, to],
+    [dataset, search, supplier, category, status, from, to],
   );
   const stats = useMemo(() => summarize(filtered), [filtered]);
   const trend = useMemo(
@@ -192,6 +203,23 @@ export default function App() {
         : [],
     [dataset],
   );
+  const categories = useMemo(
+    () =>
+      dataset
+        ? [...new Set(dataset.products.flatMap((p) => p.categories))].sort(
+            (a, b) =>
+              a === "À classer"
+                ? 1
+                : b === "À classer"
+                  ? -1
+                  : a.localeCompare(b, "fr"),
+          )
+        : [],
+    [dataset],
+  );
+  const matchedCategories =
+    dataset?.products.filter((p) => p.categoryMethod !== "unmatched").length ||
+    0;
   const statuses = useMemo(
     () => (dataset ? [...new Set(dataset.products.map((p) => p.status))] : []),
     [dataset],
@@ -220,6 +248,7 @@ export default function App() {
   const hasFilters =
     !!search ||
     !!supplier ||
+    !!category ||
     !!status ||
     from !== 0 ||
     (dataset && to !== allMonths(dataset));
@@ -227,6 +256,7 @@ export default function App() {
   function reset() {
     setSearch("");
     setSupplier("");
+    setCategory("");
     setStatus("");
     setFrom(0);
     if (dataset) setTo(allMonths(dataset));
@@ -244,6 +274,9 @@ export default function App() {
         "Produit",
         "SKU",
         "Fournisseur",
+        "Catégories MYMARKET.ma",
+        "Méthode de correspondance",
+        "Fiche source",
         "Stock actuel",
         "État",
         "Unités période",
@@ -253,6 +286,9 @@ export default function App() {
         p.title,
         p.sku,
         p.supplier,
+        p.category,
+        categoryExplanation(p.categoryMethod),
+        p.categoryUrl,
         p.stock,
         p.status,
         p.periodUnits,
@@ -475,6 +511,19 @@ export default function App() {
                     />
                   </label>
                   <label>
+                    <span>Catégorie MYMARKET.ma</span>
+                    <select
+                      aria-label="Catégorie MYMARKET.ma"
+                      value={category}
+                      onChange={(e) => setCategory(e.target.value)}
+                    >
+                      <option value="">Toutes les catégories</option>
+                      {categories.map((name) => (
+                        <option key={name}>{name}</option>
+                      ))}
+                    </select>
+                  </label>
+                  <label>
                     <span>Fournisseur</span>
                     <select
                       value={supplier}
@@ -548,6 +597,19 @@ export default function App() {
                   </button>
                 </div>
               </section>
+
+              <div className="category-source-note">
+                <ShieldCheck size={14} />
+                <span>
+                  <strong>{fmt(matchedCategories)}</strong> références
+                  rapprochées des rayons MYMARKET.ma sur{" "}
+                  {fmt(dataset.products.length)} ·{" "}
+                  {fmt(dataset.products.length - matchedCategories)} à classer.
+                </span>
+                <button onClick={() => setView("quality")}>
+                  Voir la méthode <ArrowRight size={12} />
+                </button>
+              </div>
 
               {view !== "quality" && (
                 <section
@@ -835,6 +897,13 @@ export default function App() {
                       </p>
                     </article>
                   </section>
+                  <CategoryPanel
+                    products={filtered}
+                    category={category}
+                    onSelect={(name) =>
+                      setCategory(category === name ? "" : name)
+                    }
+                  />
                   <section className="panel ranking-panel">
                     <div className="panel-heading">
                       <div>
@@ -948,6 +1017,42 @@ export default function App() {
                         </dd>
                       </div>
                     </dl>
+                    <div className="category-quality">
+                      <h3>Catégories du site officiel</h3>
+                      <p>
+                        Correspondance par SKU exact, puis titre identique après
+                        normalisation. Aucune catégorie n’est supposée pour les
+                        références sans correspondance fiable.
+                      </p>
+                      <p>
+                        <strong>{fmt(matchedCategories)}</strong> références
+                        rapprochées ·{" "}
+                        <strong>
+                          {fmt(dataset.products.length - matchedCategories)}
+                        </strong>{" "}
+                        à classer.
+                      </p>
+                      <p>
+                        Catalogue consulté le{" "}
+                        {new Date(
+                          CATEGORY_SOURCE.retrievedAt,
+                        ).toLocaleDateString("fr-FR")}
+                        . Un produit peut appartenir à plusieurs rayons ; ces
+                        répartitions ne s’additionnent pas.
+                      </p>
+                      <div className="category-source-links">
+                        {CATEGORY_SOURCE.collections.map((c) => (
+                          <a
+                            key={c.name}
+                            href={c.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                          >
+                            {c.name}
+                          </a>
+                        ))}
+                      </div>
+                    </div>
                     <div className="quality-info">
                       <ShieldCheck size={22} />
                       <p>
@@ -1041,6 +1146,23 @@ export default function App() {
                           <th>Fournisseur</th>
                           <th
                             aria-sort={
+                              sort.key === "category"
+                                ? sort.desc
+                                  ? "descending"
+                                  : "ascending"
+                                : "none"
+                            }
+                          >
+                            <button onClick={() => sortBy("category")}>
+                              Catégories{" "}
+                              <SortIndicator
+                                active={sort.key === "category"}
+                                desc={sort.desc}
+                              />
+                            </button>
+                          </th>
+                          <th
+                            aria-sort={
                               sort.key === "stock"
                                 ? sort.desc
                                   ? "descending"
@@ -1109,6 +1231,26 @@ export default function App() {
                               </button>
                             </td>
                             <td className="supplier-cell">{p.supplier}</td>
+                            <td
+                              className="category-cell"
+                              title={categoryExplanation(p.categoryMethod)}
+                            >
+                              {p.categories.map((c) => (
+                                <button
+                                  key={c}
+                                  aria-label={"Filtrer la catégorie " + c}
+                                  className={
+                                    "category-tag " +
+                                    (c === "À classer" ? "unmatched" : "")
+                                  }
+                                  onClick={() =>
+                                    setCategory(category === c ? "" : c)
+                                  }
+                                >
+                                  {c}
+                                </button>
+                              ))}
+                            </td>
                             <td className={p.stock < 0 ? "negative" : ""}>
                               {fmt(p.stock)}
                             </td>
@@ -1207,6 +1349,25 @@ export default function App() {
             <p>
               {selected.supplier} · SKU {selected.sku}
             </p>
+            <div className="detail-category">
+              <span>{selected.category}</span>
+              <p>
+                {categoryExplanation(selected.categoryMethod)}
+                {selected.categoryUrl && (
+                  <>
+                    {" "}
+                    ·{" "}
+                    <a
+                      href={selected.categoryUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      Voir le produit sur MYMARKET.ma <ArrowRight size={12} />
+                    </a>
+                  </>
+                )}
+              </p>
+            </div>
             <div className="detail-kpis">
               <div>
                 <span>Stock source</span>

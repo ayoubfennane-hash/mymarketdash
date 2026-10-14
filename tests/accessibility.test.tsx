@@ -101,16 +101,51 @@ describe("Corrections d’accessibilité", () => {
     expect((host.querySelector(".main-shell") as HTMLElement).inert).toBe(true);
     const tab = new KeyboardEvent("keydown", {
       key: "Tab",
+      shiftKey: true,
       bubbles: true,
       cancelable: true,
     });
     document.dispatchEvent(tab);
     expect(tab.defaultPrevented).toBe(true);
+    const nodes = modal.querySelectorAll<HTMLElement>("button, a[href]");
+    expect(document.activeElement).toBe(nodes[nodes.length - 1]);
+    document.dispatchEvent(
+      new KeyboardEvent("keydown", {
+        key: "Tab",
+        bubbles: true,
+        cancelable: true,
+      }),
+    );
     expect(document.activeElement).toBe(close);
     await act(async () => {
       window.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }));
     });
     expect(host.querySelector('[role="dialog"]')).toBeNull();
     expect(document.activeElement).toBe(trigger);
+  });
+  it("synchronise le filtre catégorie et le catalogue, puis réinitialise", async () => {
+    await render();
+    const select = host.querySelector<HTMLSelectElement>(
+      'select[aria-label="Catégorie MYMARKET.ma"]',
+    )!;
+    expect(select.options.length).toBeGreaterThan(10);
+    await act(async () => {
+      select.value = "Boissons";
+      select.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+    expect(select.value).toBe("Boissons");
+    expect(host.querySelector(".filter-foot")?.textContent).toContain("299");
+    expect(
+      Array.from(host.querySelectorAll(".category-cell")).every((td) =>
+        td.textContent?.includes("Boissons"),
+      ),
+    ).toBe(true);
+    const chosen = host.querySelector(
+      '.category-chips button[aria-pressed="true"]',
+    );
+    expect(chosen?.textContent).toContain("Boissons");
+    await click(host.querySelector(".filter-foot .text-button")!);
+    expect(select.value).toBe("");
+    expect(host.querySelector(".filter-foot")?.textContent).toContain("2 612");
   });
 });

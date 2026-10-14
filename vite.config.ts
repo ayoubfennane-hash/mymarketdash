@@ -5,7 +5,13 @@ export default defineConfig({
   server: { host: "0.0.0.0", port: 3000, strictPort: true, allowedHosts: true },
   build: {
     rollupOptions: {
-      output: { manualChunks: { excel: ["xlsx"], charts: ["recharts"] } },
+      output: {
+        manualChunks: {
+          excel: ["xlsx"],
+          charts: ["recharts"],
+          catalogue: ["./src/catalog-categories.json"],
+        },
+      },
     },
   },
 });
