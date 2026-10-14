@@ -354,6 +354,16 @@ export default function App() {
             <ShieldCheck size={18} />
             Qualité des données
           </button>
+          <a
+            className="sidebar-download"
+            href="/MYMARKET_modele_import.xlsx"
+            download="MYMARKET_modele_import.xlsx"
+            aria-label="Télécharger le modèle Excel vierge"
+            title="Télécharger le modèle Excel"
+          >
+            <ArrowDownToLine size={18} aria-hidden="true" />
+            <span>Modèle Excel</span>
+          </a>
         </nav>
         <div className="sidebar-note">
           <span className="tiny-label">VOTRE SOURCE</span>

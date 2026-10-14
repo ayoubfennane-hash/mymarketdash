@@ -1765,3 +1765,45 @@ th[aria-sort="descending"] {
 .category-source-note span {
   min-width: 0;
 }
+
+.sidebar nav .sidebar-download {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border-radius: 9px;
+  padding: 14px 12px;
+  font-size: 12px;
+  font-weight: 550;
+  color: #7b8b81;
+  position: relative;
+  white-space: nowrap;
+  transition:
+    background 0.15s,
+    color 0.15s;
+}
+.sidebar nav .sidebar-download:hover {
+  background: #eef5ef;
+  color: var(--green);
+}
+.sidebar nav .sidebar-download svg {
+  flex-shrink: 0;
+}
+@media (max-width: 960px) {
+  .sidebar nav .sidebar-download {
+    font-size: 0;
+    padding: 14px;
+    justify-content: center;
+  }
+  .sidebar nav .sidebar-download span {
+    display: none;
+  }
+  .sidebar nav .sidebar-download svg {
+    width: 20px;
+    height: 20px;
+  }
+}
+@media (max-width: 700px) {
+  .sidebar nav .sidebar-download {
+    padding: 10px;
+  }
+}

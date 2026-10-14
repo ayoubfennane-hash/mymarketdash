@@ -102,7 +102,17 @@ export function parseWorkbook(buffer: ArrayBuffer, name: string): Dataset {
   const products: Product[] = [];
   rows.slice(1).forEach((row, index) => {
     if (!row[0] || !String(row[0]).trim()) {
-      skipped++;
+      const inputCells = [
+        ...row.slice(0, 16),
+        ...row.slice(17, 27),
+        ...row.slice(28),
+      ];
+      if (
+        inputCells.some(
+          (value) => value !== null && value !== undefined && value !== "",
+        )
+      )
+        skipped++;
       return;
     }
     let missingNumbers = 0;

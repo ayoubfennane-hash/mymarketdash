@@ -177,4 +177,14 @@ describe("Corrections d’accessibilité", () => {
     );
     expect(host.querySelector(".category-source-links a")).toBeNull();
   });
+  it("expose le téléchargement du modèle Excel dans le menu gauche", async () => {
+    await render();
+    const link = host.querySelector<HTMLAnchorElement>("nav .sidebar-download");
+    expect(link).not.toBeNull();
+    expect(link?.getAttribute("href")).toBe("/MYMARKET_modele_import.xlsx");
+    expect(link?.download).toBe("MYMARKET_modele_import.xlsx");
+    expect(link?.getAttribute("aria-label")).toContain(
+      "Télécharger le modèle Excel",
+    );
+  });
 });
