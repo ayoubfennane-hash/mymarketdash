@@ -187,4 +187,122 @@ describe("Corrections d’accessibilité", () => {
       "Télécharger le modèle Excel",
     );
   });
+  it("ouvre un guide complet et conserve la catégorie lors du retour au tableau", async () => {
+    await render();
+    const select = host.querySelector<HTMLSelectElement>(
+      'select[aria-label="Catégorie (CSV)"]',
+    )!;
+    await act(async () => {
+      select.value = "Alimentation";
+      select.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+    const guideButton = host.querySelector(
+      'nav button[aria-label="Guide d’utilisation"]',
+    )!;
+    await click(guideButton);
+    expect(guideButton.getAttribute("aria-current")).toBe("page");
+    expect(host.querySelector(".breadcrumb")?.textContent).toContain(
+      "Guide d’utilisation",
+    );
+    expect(host.querySelector(".guide-layout")).not.toBeNull();
+    expect(host.querySelectorAll(".guide-content section")).toHaveLength(5);
+    expect(host.querySelectorAll(".guide-faq details")).toHaveLength(9);
+    expect(host.querySelector(".guide-layout")?.textContent).toContain("10 Mo");
+    expect(host.querySelector(".guide-layout")?.textContent).toContain(
+      "Type de produit",
+    );
+    const anchor = host.querySelector<HTMLAnchorElement>(
+      ".guide-steps a[download]",
+    )!;
+    expect(anchor.getAttribute("href")).toBe("/MYMARKET_modele_import.xlsx");
+    for (const a of host.querySelectorAll<HTMLAnchorElement>(".guide-toc a")) {
+      expect(host.querySelector(a.getAttribute("href")!)).not.toBeNull();
+    }
+    await click(host.querySelector('nav button[aria-label="Vue d’ensemble"]')!);
+    expect(
+      host.querySelector<HTMLSelectElement>(
+        'select[aria-label="Catégorie (CSV)"]',
+      )!.value,
+    ).toBe("Alimentation");
+    expect(host.querySelector(".reading-summary")?.textContent).toContain(
+      "1 241 références",
+    );
+  });
+  it("ouvre l’import depuis le guide et permet de consulter le catalogue", async () => {
+    await render();
+    await click(
+      host.querySelector('nav button[aria-label="Guide d’utilisation"]')!,
+    );
+    const input = host.querySelector<HTMLInputElement>('input[type="file"]')!;
+    const spy = vi.spyOn(input, "click").mockImplementation(() => {});
+    const importButton = Array.from(
+      host.querySelectorAll<HTMLButtonElement>(".guide-steps button"),
+    ).find((b) => b.textContent?.includes("Importer mon classeur"))!;
+    await click(importButton);
+    expect(spy).toHaveBeenCalledOnce();
+    spy.mockRestore();
+    const catalogue = Array.from(
+      host.querySelectorAll<HTMLButtonElement>(".guide-actions button"),
+    ).find((b) => b.textContent?.includes("Explorer le catalogue"))!;
+    await click(catalogue);
+    expect(
+      host
+        .querySelector('nav button[aria-current="page"]')
+        ?.getAttribute("aria-label"),
+    ).toBe("Catalogue produits");
+    expect(host.querySelector(".guide-layout")).toBeNull();
+    expect(host.querySelector(".table-panel")).not.toBeNull();
+  });
+  it("laisse le guide accessible même lorsque le classeur source échoue", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockRejectedValue(new Error("Source indisponible")),
+    );
+    await render();
+    await click(
+      host.querySelector('nav button[aria-label="Guide d’utilisation"]')!,
+    );
+    expect(host.querySelector(".guide-layout")).not.toBeNull();
+    expect(host.querySelector(".guide-sources")?.textContent).toContain(
+      "Aucun classeur chargé",
+    );
+    expect(host.querySelector(".guide-faq")?.textContent).toContain(
+      "pas un historique mensuel",
+    );
+  });
+  it("recalcule le résumé avec les filtres, expose l’aide et gère la sélection vide", async () => {
+    await render();
+    expect(host.querySelector(".reading-summary")?.textContent).toContain(
+      "2 612 références",
+    );
+    expect(host.querySelector(".reading-summary")?.textContent).toContain(
+      "44 059 unités",
+    );
+    expect(host.querySelector(".reading-summary")?.textContent).toContain(
+      "64 437 unités",
+    );
+    const details = host.querySelector<HTMLDetailsElement>(".reading-details")!;
+    expect(details.open).toBe(false);
+    expect(details.querySelectorAll(".reading-definitions>div")).toHaveLength(
+      4,
+    );
+    const search = host.querySelector<HTMLInputElement>(
+      'input[aria-label="Rechercher un produit, SKU ou fournisseur"]',
+    )!;
+    await act(async () => {
+      Object.getOwnPropertyDescriptor(
+        HTMLInputElement.prototype,
+        "value",
+      )!.set!.call(search, "produit-impossible-qzx987");
+      search.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    expect(host.querySelector(".reading-summary")?.textContent).toContain(
+      "Aucune référence",
+    );
+    expect(host.querySelector(".reading-summary")?.textContent).not.toContain(
+      "2 612 références",
+    );
+    await click(host.querySelector(".reading-aid .text-button")!);
+    expect(host.querySelector(".guide-layout")).not.toBeNull();
+  });
 });

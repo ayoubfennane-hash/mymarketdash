@@ -7,6 +7,7 @@ import {
   ArrowUp,
   ArrowUpDown,
   Box,
+  BookOpen,
   Check,
   ChevronLeft,
   ChevronRight,
@@ -38,6 +39,8 @@ import {
 import { parseWorkbook, type Dataset } from "./data";
 import { useDialogFocus } from "./useDialogFocus";
 import CategoryPanel from "./CategoryPanel";
+import UserGuide from "./UserGuide";
+import ReadingAid from "./ReadingAid";
 import {
   CATEGORY_SOURCE,
   categoryExplanation,
@@ -78,9 +81,9 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [importing, setImporting] = useState(false);
   const [error, setError] = useState("");
-  const [view, setView] = useState<"overview" | "catalogue" | "quality">(
-    "overview",
-  );
+  const [view, setView] = useState<
+    "overview" | "catalogue" | "quality" | "guide"
+  >("overview");
   const [search, setSearch] = useState("");
   const [supplier, setSupplier] = useState("");
   const [category, setCategory] = useState("");
@@ -334,6 +337,9 @@ export default function App() {
         <nav aria-label="Navigation principale">
           <button
             className={view === "overview" ? "active" : ""}
+            aria-current={view === "overview" ? "page" : undefined}
+            aria-label="Vue d’ensemble"
+            title="Vue d’ensemble"
             onClick={() => setView("overview")}
           >
             <LayoutDashboard size={18} />
@@ -342,6 +348,9 @@ export default function App() {
           </button>
           <button
             className={view === "catalogue" ? "active" : ""}
+            aria-current={view === "catalogue" ? "page" : undefined}
+            aria-label="Catalogue produits"
+            title="Catalogue produits"
             onClick={() => setView("catalogue")}
           >
             <Package size={18} />
@@ -349,10 +358,23 @@ export default function App() {
           </button>
           <button
             className={view === "quality" ? "active" : ""}
+            aria-current={view === "quality" ? "page" : undefined}
+            aria-label="Qualité des données"
+            title="Qualité des données"
             onClick={() => setView("quality")}
           >
             <ShieldCheck size={18} />
             Qualité des données
+          </button>
+          <button
+            className={view === "guide" ? "active" : ""}
+            aria-current={view === "guide" ? "page" : undefined}
+            aria-label="Guide d’utilisation"
+            title="Guide d’utilisation"
+            onClick={() => setView("guide")}
+          >
+            <BookOpen size={18} />
+            Guide d’utilisation
           </button>
           <a
             className="sidebar-download"
@@ -399,7 +421,9 @@ export default function App() {
                 ? "Vue d’ensemble"
                 : view === "catalogue"
                   ? "Catalogue"
-                  : "Qualité des données"}
+                  : view === "quality"
+                    ? "Qualité des données"
+                    : "Guide d’utilisation"}
             </strong>
           </div>
           <span
@@ -441,9 +465,13 @@ export default function App() {
                   <>
                     Le détail fait <em>la différence.</em>
                   </>
-                ) : (
+                ) : view === "quality" ? (
                   <>
                     Des données, <em>en toute clarté.</em>
+                  </>
+                ) : (
+                  <>
+                    Comprendre pour <em>mieux analyser.</em>
                   </>
                 )}
               </h1>
@@ -452,7 +480,9 @@ export default function App() {
                   ? "Explorez les mouvements, les fournisseurs et la disponibilité de votre catalogue."
                   : view === "catalogue"
                     ? "Retrouvez chaque référence et les valeurs derrière les graphiques."
-                    : "Comprenez la source et les règles de calcul avant de décider."}
+                    : view === "quality"
+                      ? "Comprenez la source et les règles de calcul avant de décider."
+                      : "Un mode d’emploi concret, du modèle Excel à l’export de votre sélection."}
               </p>
             </div>
             <div className="heading-actions">
@@ -464,14 +494,23 @@ export default function App() {
                 <Upload size={16} />
                 {importing ? "Lecture…" : "Importer Excel"}
               </button>
-              <button
-                className="btn primary"
-                onClick={exportCSV}
-                disabled={!dataset || !filtered.length}
-              >
-                <ArrowDownToLine size={16} />
-                Exporter la sélection
-              </button>
+              {view === "guide" ? (
+                <button
+                  className="btn primary"
+                  onClick={() => setView("overview")}
+                >
+                  Voir le tableau de bord <ArrowRight size={16} />
+                </button>
+              ) : (
+                <button
+                  className="btn primary"
+                  onClick={exportCSV}
+                  disabled={!dataset || !filtered.length}
+                >
+                  <ArrowDownToLine size={16} />
+                  Exporter la sélection
+                </button>
+              )}
             </div>
           </section>
           <input
@@ -493,7 +532,13 @@ export default function App() {
               </button>
             </div>
           )}
-          {loading ? (
+          {view === "guide" ? (
+            <UserGuide
+              dataset={dataset}
+              onNavigate={setView}
+              onImport={() => upload.current?.click()}
+            />
+          ) : loading ? (
             <div className="loading-state" role="status">
               <LoaderCircle className="spin" size={30} />
               <h2>Lecture de votre classeur</h2>
@@ -696,6 +741,11 @@ export default function App() {
 
               {view === "overview" && (
                 <>
+                  <ReadingAid
+                    products={filtered}
+                    period={`${dataset.months[from].long} – ${dataset.months[to].long}`}
+                    onGuide={() => setView("guide")}
+                  />
                   <div className="section-label">
                     <h2>Les tendances qui comptent</h2>
                     <span>Une lecture reliée à vos filtres</span>
