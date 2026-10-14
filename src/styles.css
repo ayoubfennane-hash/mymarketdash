@@ -1758,3 +1758,10 @@ th[aria-sort="descending"] {
     font-size: 11px;
   }
 }
+
+.category-source-filename {
+  overflow-wrap: anywhere;
+}
+.category-source-note span {
+  min-width: 0;
+}

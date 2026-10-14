@@ -126,26 +126,55 @@ describe("Corrections d’accessibilité", () => {
   it("synchronise le filtre catégorie et le catalogue, puis réinitialise", async () => {
     await render();
     const select = host.querySelector<HTMLSelectElement>(
-      'select[aria-label="Catégorie MYMARKET.ma"]',
+      'select[aria-label="Catégorie (CSV)"]',
     )!;
     expect(select.options.length).toBeGreaterThan(10);
     await act(async () => {
-      select.value = "Boissons";
+      select.value = "Alimentation";
       select.dispatchEvent(new Event("change", { bubbles: true }));
     });
-    expect(select.value).toBe("Boissons");
-    expect(host.querySelector(".filter-foot")?.textContent).toContain("299");
+    expect(select.value).toBe("Alimentation");
+    expect(host.querySelector(".filter-foot")?.textContent).toContain("1 241");
     expect(
       Array.from(host.querySelectorAll(".category-cell")).every((td) =>
-        td.textContent?.includes("Boissons"),
+        td.textContent?.includes("Alimentation"),
       ),
     ).toBe(true);
     const chosen = host.querySelector(
       '.category-chips button[aria-pressed="true"]',
     );
-    expect(chosen?.textContent).toContain("Boissons");
+    expect(chosen?.textContent).toContain("Alimentation");
     await click(host.querySelector(".filter-foot .text-button")!);
     expect(select.value).toBe("");
     expect(host.querySelector(".filter-foot")?.textContent).toContain("2 612");
+  });
+  it("distingue le type vide du produit absent et expose la nouvelle source CSV", async () => {
+    await render();
+    const select = host.querySelector<HTMLSelectElement>(
+      'select[aria-label="Catégorie (CSV)"]',
+    )!;
+    await act(async () => {
+      select.value = "Type non renseigné";
+      select.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+    expect(host.querySelector(".filter-foot")?.textContent).toContain("102");
+    expect(
+      Array.from(host.querySelectorAll(".category-cell")).every((td) =>
+        td.textContent?.includes("Type non renseigné"),
+      ),
+    ).toBe(true);
+    await act(async () => {
+      select.value = "Absent du CSV";
+      select.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+    expect(host.querySelector(".filter-foot")?.textContent).toContain("548");
+    await click(host.querySelector(".category-source-note button")!);
+    expect(host.querySelector(".category-quality")?.textContent).toContain(
+      "Ventestotalesparvariantedeproduit-2026-01-01-2026-10-14.csv",
+    );
+    expect(host.querySelector(".category-quality")?.textContent).toContain(
+      "Type de produit",
+    );
+    expect(host.querySelector(".category-source-links a")).toBeNull();
   });
 });

@@ -38,7 +38,14 @@ import {
 import { parseWorkbook, type Dataset } from "./data";
 import { useDialogFocus } from "./useDialogFocus";
 import CategoryPanel from "./CategoryPanel";
-import { CATEGORY_SOURCE, categoryExplanation } from "./categories";
+import {
+  CATEGORY_SOURCE,
+  categoryExplanation,
+  isAssignedCategory,
+  MISSING_TYPE,
+  ABSENT_FROM_CSV,
+  AMBIGUOUS_TYPE,
+} from "./categories";
 import {
   compactNumber,
   formatNumber as fmt,
@@ -206,19 +213,22 @@ export default function App() {
   const categories = useMemo(
     () =>
       dataset
-        ? [...new Set(dataset.products.flatMap((p) => p.categories))].sort(
-            (a, b) =>
-              a === "À classer"
-                ? 1
-                : b === "À classer"
-                  ? -1
-                  : a.localeCompare(b, "fr"),
-          )
+        ? [
+            ...new Set([
+              ...CATEGORY_SOURCE.categoryLabels.map((c) => c.name),
+              ...dataset.products.flatMap((p) => p.categories),
+            ]),
+          ].sort((a, b) => a.localeCompare(b, "fr"))
         : [],
     [dataset],
   );
   const matchedCategories =
-    dataset?.products.filter((p) => p.categoryMethod !== "unmatched").length ||
+    dataset?.products.filter((p) => isAssignedCategory(p.categoryMethod))
+      .length || 0;
+  const missingTypeCount =
+    dataset?.products.filter((p) => p.categoryMethod === "missing").length || 0;
+  const absentCsvCount =
+    dataset?.products.filter((p) => p.categoryMethod === "unmatched").length ||
     0;
   const statuses = useMemo(
     () => (dataset ? [...new Set(dataset.products.map((p) => p.status))] : []),
@@ -274,9 +284,9 @@ export default function App() {
         "Produit",
         "SKU",
         "Fournisseur",
-        "Catégories MYMARKET.ma",
+        "Catégorie (Type de produit du CSV)",
         "Méthode de correspondance",
-        "Fiche source",
+        "Source des catégories",
         "Stock actuel",
         "État",
         "Unités période",
@@ -288,7 +298,7 @@ export default function App() {
         p.supplier,
         p.category,
         categoryExplanation(p.categoryMethod),
-        p.categoryUrl,
+        CATEGORY_SOURCE.fileName,
         p.stock,
         p.status,
         p.periodUnits,
@@ -511,9 +521,9 @@ export default function App() {
                     />
                   </label>
                   <label>
-                    <span>Catégorie MYMARKET.ma</span>
+                    <span>Catégorie (CSV)</span>
                     <select
-                      aria-label="Catégorie MYMARKET.ma"
+                      aria-label="Catégorie (CSV)"
                       value={category}
                       onChange={(e) => setCategory(e.target.value)}
                     >
@@ -601,10 +611,12 @@ export default function App() {
               <div className="category-source-note">
                 <ShieldCheck size={14} />
                 <span>
-                  <strong>{fmt(matchedCategories)}</strong> références
-                  rapprochées des rayons MYMARKET.ma sur{" "}
-                  {fmt(dataset.products.length)} ·{" "}
-                  {fmt(dataset.products.length - matchedCategories)} à classer.
+                  <strong>
+                    Catégories : « {CATEGORY_SOURCE.sourceField} » du CSV
+                  </strong>{" "}
+                  · {fmt(matchedCategories)} références catégorisées ·{" "}
+                  {fmt(missingTypeCount)} types non renseignés ·{" "}
+                  {fmt(absentCsvCount)} absentes du CSV.
                 </span>
                 <button onClick={() => setView("quality")}>
                   Voir la méthode <ArrowRight size={12} />
@@ -1018,38 +1030,47 @@ export default function App() {
                       </div>
                     </dl>
                     <div className="category-quality">
-                      <h3>Catégories du site officiel</h3>
+                      <h3>Catégories du fichier fourni</h3>
+                      <p className="category-source-filename">
+                        <strong>{CATEGORY_SOURCE.fileName}</strong>
+                      </p>
                       <p>
-                        Correspondance par SKU exact, puis titre identique après
-                        normalisation. Aucune catégorie n’est supposée pour les
-                        références sans correspondance fiable.
+                        Champ utilisé : « {CATEGORY_SOURCE.sourceField} ». Le
+                        fichier contient {fmt(CATEGORY_SOURCE.reportRows)}{" "}
+                        lignes mensuelles et{" "}
+                        {fmt(CATEGORY_SOURCE.uniqueProducts)} identités
+                        produit/variante. Ses colonnes de ventes ne remplacent
+                        pas les valeurs du classeur.
+                      </p>
+                      <p>
+                        Correspondance par SKU exact conservé comme texte, puis
+                        titre exact normalisé lorsque le SKU est absent. Un seul
+                        type par référence. Aucune catégorie ne provient
+                        désormais du site MYMARKET.ma.
                       </p>
                       <p>
                         <strong>{fmt(matchedCategories)}</strong> références
-                        rapprochées ·{" "}
-                        <strong>
-                          {fmt(dataset.products.length - matchedCategories)}
-                        </strong>{" "}
-                        à classer.
+                        catégorisées · <strong>{fmt(missingTypeCount)}</strong>{" "}
+                        « Type non renseigné » ·{" "}
+                        <strong>{fmt(absentCsvCount)}</strong> « Absent du CSV
+                        ».
                       </p>
                       <p>
-                        Catalogue consulté le{" "}
-                        {new Date(
-                          CATEGORY_SOURCE.retrievedAt,
-                        ).toLocaleDateString("fr-FR")}
-                        . Un produit peut appartenir à plusieurs rayons ; ces
-                        répartitions ne s’additionnent pas.
+                        Les mois du rapport vont de janvier à octobre 2026
+                        (dates de début de mois). Les espaces sont supprimés en
+                        bordure et « bébé » est regroupé sous « Bébé » ; les
+                        autres libellés du fichier, y compris « product » ou «
+                        matérnité », sont conservés. Les types renseignés aux
+                        autres mois peuvent compléter un mois vide ; en cas de
+                        changement de type, la dernière valeur renseignée est
+                        retenue. {fmt(CATEGORY_SOURCE.conflictingProducts)}{" "}
+                        conflit de type détecté dans le fichier.
                       </p>
                       <div className="category-source-links">
-                        {CATEGORY_SOURCE.collections.map((c) => (
-                          <a
-                            key={c.name}
-                            href={c.url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                          >
+                        {CATEGORY_SOURCE.categoryLabels.map((c) => (
+                          <span key={c.name} className="category-tag">
                             {c.name}
-                          </a>
+                          </span>
                         ))}
                       </div>
                     </div>
@@ -1241,7 +1262,13 @@ export default function App() {
                                   aria-label={"Filtrer la catégorie " + c}
                                   className={
                                     "category-tag " +
-                                    (c === "À classer" ? "unmatched" : "")
+                                    ([
+                                      MISSING_TYPE,
+                                      ABSENT_FROM_CSV,
+                                      AMBIGUOUS_TYPE,
+                                    ].includes(c)
+                                      ? "unmatched"
+                                      : "")
                                   }
                                   onClick={() =>
                                     setCategory(category === c ? "" : c)
@@ -1351,21 +1378,10 @@ export default function App() {
             </p>
             <div className="detail-category">
               <span>{selected.category}</span>
-              <p>
-                {categoryExplanation(selected.categoryMethod)}
-                {selected.categoryUrl && (
-                  <>
-                    {" "}
-                    ·{" "}
-                    <a
-                      href={selected.categoryUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
-                      Voir le produit sur MYMARKET.ma <ArrowRight size={12} />
-                    </a>
-                  </>
-                )}
+              <p>{categoryExplanation(selected.categoryMethod)}</p>
+              <p className="category-source-filename">
+                Source : {CATEGORY_SOURCE.fileName} · champ «{" "}
+                {CATEGORY_SOURCE.sourceField} »
               </p>
             </div>
             <div className="detail-kpis">

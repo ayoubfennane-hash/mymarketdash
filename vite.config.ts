@@ -9,7 +9,7 @@ export default defineConfig({
         manualChunks: {
           excel: ["xlsx"],
           charts: ["recharts"],
-          catalogue: ["./src/catalog-categories.json"],
+          categories: ["./src/category-source.json"],
         },
       },
     },

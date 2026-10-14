@@ -1,76 +1,77 @@
-import catalogue from "./catalog-categories.json";
+import index from "./category-source.json";
 
-export const CATEGORY_SOURCE = {
-  url: catalogue.source,
-  retrievedAt: catalogue.retrievedAt,
-  collections: catalogue.collections,
-};
+export const CATEGORY_SOURCE = index.source;
+export const MISSING_TYPE = "Type non renseigné";
+export const ABSENT_FROM_CSV = "Absent du CSV";
+export const AMBIGUOUS_TYPE = "Type ambigu";
+export type CategoryMethod =
+  | "sku"
+  | "title"
+  | "missing"
+  | "unmatched"
+  | "ambiguous";
 export type CategoryMatch = {
   categories: string[];
   category: string;
-  categoryMethod: "sku" | "title" | "unmatched";
-  categoryUrl: string;
+  categoryMethod: CategoryMethod;
 };
-type Entry = (typeof catalogue.products)[number];
-const normalize = (s: string) =>
+type Entry = { sku: string; title: string; categories: string[] };
+export const normalizeTitle = (s: string) =>
   s
-    .normalize("NFD")
+    .normalize("NFKD")
     .replace(/[\u0300-\u036f]/g, "")
     .toLocaleLowerCase("fr")
     .replace(/[^a-z0-9]+/g, " ")
     .trim();
-const skuMap = new Map<string, Entry[]>();
-const titleMap = new Map<string, Entry[]>();
-function add(map: Map<string, Entry[]>, key: string, entry: Entry) {
-  if (!key || key === "0" || key === "—") return;
-  map.set(key, [...(map.get(key) || []), entry]);
+
+function classified(
+  category: string,
+  categoryMethod: CategoryMethod,
+): CategoryMatch {
+  return { categories: [category], category, categoryMethod };
 }
-catalogue.products.forEach((p) => {
-  p.skus.forEach((s) => add(skuMap, s.trim(), p));
-  add(titleMap, normalize(p.title), p);
-});
-function sameCategories(entries: Entry[]) {
-  return entries.every(
-    (p) =>
-      [...p.categories].sort().join("|") ===
-      [...entries[0].categories].sort().join("|"),
-  );
-}
-export function matchCategory(sku: string, title: string): CategoryMatch {
-  const bySku = skuMap.get(sku.trim());
-  const byTitle = titleMap.get(normalize(title));
-  let matches = bySku;
-  let method: CategoryMatch["categoryMethod"] = "sku";
-  // Les SKU réutilisés sont désambiguïsés par le titre, jamais par un rapprochement flou.
-  if (matches && matches.length > 1 && !sameCategories(matches)) {
-    const exact = matches.filter(
-      (p) => normalize(p.title) === normalize(title),
-    );
-    matches = exact.length && sameCategories(exact) ? exact : undefined;
-  }
-  if (!matches || !matches.length) {
-    matches = byTitle;
-    method = "title";
-  }
-  if (!matches?.length || !sameCategories(matches))
-    return {
-      categories: ["À classer"],
-      category: "À classer",
-      categoryMethod: "unmatched",
-      categoryUrl: "",
-    };
-  const p = matches[0];
-  return {
-    categories: [...p.categories],
-    category: p.categories.join(" · "),
-    categoryMethod: method,
-    categoryUrl: `https://www.mymarket.ma/products/${p.handle}`,
+// Exporté pour tester les cas ambigus sans modifier l'index de production.
+export function createCategoryMatcher(entries: Entry[]) {
+  const skuMap = new Map<string, Entry[]>();
+  const titleMap = new Map<string, Entry[]>();
+  const add = (map: Map<string, Entry[]>, key: string, entry: Entry) => {
+    if (!key || key === "0" || key === "—") return;
+    map.set(key, [...(map.get(key) || []), entry]);
+  };
+  entries.forEach((p) => {
+    add(skuMap, p.sku.trim(), p);
+    add(titleMap, normalizeTitle(p.title), p);
+  });
+  const resolve = (matches: Entry[], method: "sku" | "title") => {
+    const types = [...new Set(matches.flatMap((p) => p.categories))];
+    if (types.length > 1) return classified(AMBIGUOUS_TYPE, "ambiguous");
+    if (!types.length) return classified(MISSING_TYPE, "missing");
+    return classified(types[0], method);
+  };
+  return (sku: string, title: string): CategoryMatch => {
+    const bySku = skuMap.get(sku.trim());
+    // Un SKU présent mais sans type reste non renseigné ; pas de remplissage par le site.
+    if (bySku?.length) return resolve(bySku, "sku");
+    const byTitle = titleMap.get(normalizeTitle(title));
+    if (byTitle?.length) return resolve(byTitle, "title");
+    return classified(ABSENT_FROM_CSV, "unmatched");
   };
 }
-export function categoryExplanation(method: CategoryMatch["categoryMethod"]) {
-  return method === "sku"
-    ? "Correspondance SKU avec MYMARKET.ma"
-    : method === "title"
-      ? "Correspondance exacte de titre avec MYMARKET.ma"
-      : "Aucune correspondance fiable dans le catalogue consulté";
+export const matchCategory = createCategoryMatcher(index.products);
+export function isAssignedCategory(method: CategoryMethod) {
+  return method === "sku" || method === "title";
+}
+export function categoryExplanation(method: CategoryMethod) {
+  switch (method) {
+    case "sku":
+      return "Type de produit du CSV · correspondance SKU exacte";
+    case "title":
+      return "Type de produit du CSV · correspondance de titre exact normalisé";
+    case "missing":
+      return "Produit présent dans le CSV, mais le champ « Type de produit » est vide";
+    case "ambiguous":
+      return "Plusieurs types distincts dans le CSV pour cette identité ; attribution suspendue";
+    default:
+      return "Aucune correspondance SKU ou titre dans le CSV fourni";
+  }
 }

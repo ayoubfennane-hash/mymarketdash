@@ -14,7 +14,12 @@ import {
   formatNumber as fmt,
   type ProductView,
 } from "./analytics";
-import { CATEGORY_SOURCE } from "./categories";
+import {
+  CATEGORY_SOURCE,
+  MISSING_TYPE,
+  ABSENT_FROM_CSV,
+  AMBIGUOUS_TYPE,
+} from "./categories";
 
 export default function CategoryPanel({
   products,
@@ -29,21 +34,19 @@ export default function CategoryPanel({
   return (
     <section
       className="panel category-panel"
-      aria-label="Répartition par catégories MYMARKET.ma"
+      aria-label="Répartition par types de produit du CSV"
     >
       <div className="panel-heading">
         <div>
-          <span className="tiny-label">RAYONS MYMARKET.MA</span>
+          <span className="tiny-label">TYPES DE PRODUIT · CSV</span>
           <h3>Votre catalogue, par catégorie</h3>
         </div>
-        <a
+        <span
           className="subtle-pill source-link"
-          href={CATEGORY_SOURCE.url}
-          target="_blank"
-          rel="noopener noreferrer"
+          title={CATEGORY_SOURCE.fileName}
         >
-          Source : MYMARKET.ma
-        </a>
+          Source : CSV fourni
+        </span>
       </div>
       <div className="category-panel-body">
         <div
@@ -95,7 +98,11 @@ export default function CategoryPanel({
                     <Cell
                       key={d.name}
                       fill={
-                        d.name === "À classer"
+                        [
+                          MISSING_TYPE,
+                          ABSENT_FROM_CSV,
+                          AMBIGUOUS_TYPE,
+                        ].includes(d.name)
                           ? "#d5ad65"
                           : category === d.name
                             ? "#12645c"
@@ -114,7 +121,7 @@ export default function CategoryPanel({
           )}
         </div>
         <div className="category-summary">
-          <span className="tiny-label">EXPLORER UN RAYON</span>
+          <span className="tiny-label">EXPLORER UNE CATÉGORIE</span>
           <div className="category-chips">
             {data.map((d) => (
               <button
@@ -129,13 +136,14 @@ export default function CategoryPanel({
             ))}
           </div>
           <p>
-            Les rayons sont ceux du site. Un produit peut appartenir à plusieurs
-            catégories : les barres ne s’additionnent pas au total des
-            références.
+            Les catégories reprennent le champ « {CATEGORY_SOURCE.sourceField} »
+            du CSV fourni. Chaque référence appartient à un seul type : la
+            répartition correspond au total de la sélection.
           </p>
           <p>
-            « À classer » conserve les références sans correspondance fiable,
-            sans catégorie supposée.
+            « Type non renseigné » indique un produit présent dans le CSV sans
+            type. « Absent du CSV » indique une référence sans correspondance
+            dans ce fichier.
           </p>
         </div>
       </div>

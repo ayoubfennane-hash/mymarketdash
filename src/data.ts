@@ -186,7 +186,21 @@ export function parseWorkbook(buffer: ArrayBuffer, name: string): Dataset {
   ).length;
   if (unmatchedCategories)
     warnings.push(
-      `${unmatchedCategories.toLocaleString("fr-FR")} références sans correspondance fiable sur MYMARKET.ma, conservées dans « À classer ».`,
+      `${unmatchedCategories.toLocaleString("fr-FR")} références sans correspondance dans le CSV fourni, regroupées sous « Absent du CSV ».`,
+    );
+  const missingTypes = products.filter(
+    (p) => p.categoryMethod === "missing",
+  ).length;
+  if (missingTypes)
+    warnings.push(
+      `${missingTypes.toLocaleString("fr-FR")} références présentes dans le CSV mais sans « Type de produit », regroupées sous « Type non renseigné ».`,
+    );
+  const ambiguousTypes = products.filter(
+    (p) => p.categoryMethod === "ambiguous",
+  ).length;
+  if (ambiguousTypes)
+    warnings.push(
+      `${ambiguousTypes.toLocaleString("fr-FR")} références avec des types incompatibles dans le CSV, regroupées sous « Type ambigu ».`,
     );
   if (skipped) warnings.push(`${skipped} lignes sans titre ignorées.`);
   return {
