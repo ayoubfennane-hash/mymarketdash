@@ -5,6 +5,11 @@ import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import App from "../src/App";
 import { parseWorkbook } from "../src/data";
+vi.mock("../src/workbookStorage", () => ({
+  readStoredWorkbook: async () => null,
+  saveStoredWorkbook: async () => true,
+  clearStoredWorkbook: async () => true,
+}));
 vi.mock("recharts", () => ({
   Area: () => null,
   AreaChart: () => null,

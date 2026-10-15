@@ -43,6 +43,11 @@ import UserGuide from "./UserGuide";
 import ReadingAid from "./ReadingAid";
 import SupplierSelect from "./SupplierSelect";
 import {
+  readStoredWorkbook,
+  saveStoredWorkbook,
+  clearStoredWorkbook,
+} from "./workbookStorage";
+import {
   CATEGORY_SOURCE,
   categoryExplanation,
   isAssignedCategory,
@@ -83,6 +88,15 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [importing, setImporting] = useState(false);
   const [error, setError] = useState("");
+  const [storageNotice, setStorageNotice] = useState("");
+  const [savedImport, setSavedImport] = useState<{
+    name: string;
+    savedAt: string;
+  } | null>(null);
+  const [restoredImport, setRestoredImport] = useState(false);
+  const [confirmRestore, setConfirmRestore] = useState(false);
+  const [sourceKind, setSourceKind] = useState<"builtin" | "local">("builtin");
+
   const [view, setView] = useState<
     "overview" | "catalogue" | "quality" | "guide"
   >("overview");
@@ -119,24 +133,53 @@ export default function App() {
     setTo(allMonths(next));
     setPage(0);
     setSelected(null);
+    setConfirmRestore(false);
     setError("");
+  }
+  async function fetchBuiltin() {
+    const response = await fetch("/MYMARKET_Tableau_de_bord.xlsx", {
+      cache: "no-store",
+    });
+    if (!response.ok)
+      throw new Error(
+        "Le fichier source est indisponible. Réessayez ou importez le classeur.",
+      );
+    return parseWorkbook(
+      await response.arrayBuffer(),
+      "MYMARKET_Tableau_de_bord.xlsx",
+    );
   }
   async function loadSource() {
     const version = ++readVersion.current;
     setLoading(true);
     setImporting(false);
     setError("");
+    setStorageNotice("");
     try {
-      const response = await fetch("/MYMARKET_Tableau_de_bord.xlsx");
-      if (!response.ok)
-        throw new Error(
-          "Le fichier source est indisponible. Réessayez ou importez le classeur.",
+      try {
+        const stored = await readStoredWorkbook();
+        if (version !== readVersion.current) return;
+        if (stored) {
+          const next = parseWorkbook(stored.buffer, stored.name);
+          applyData(next);
+          setSavedImport({ name: stored.name, savedAt: stored.savedAt });
+          setSourceKind("local");
+          setRestoredImport(true);
+          return;
+        }
+      } catch {
+        if (version !== readVersion.current) return;
+        setStorageNotice(
+          "La sauvegarde locale n’a pas pu être restaurée. Le fichier initial est chargé à la place ; votre sauvegarde n’est pas effacée. Vérifiez le stockage du navigateur ou réimportez votre Excel.",
         );
-      const next = parseWorkbook(
-        await response.arrayBuffer(),
-        "MYMARKET_Tableau_de_bord.xlsx",
-      );
-      if (version === readVersion.current) applyData(next);
+      }
+      const next = await fetchBuiltin();
+      if (version === readVersion.current) {
+        applyData(next);
+        setSavedImport(null);
+        setSourceKind("builtin");
+        setRestoredImport(false);
+      }
     } catch (e) {
       if (version === readVersion.current)
         setError(
@@ -146,8 +189,41 @@ export default function App() {
       if (version === readVersion.current) setLoading(false);
     }
   }
+  async function restoreBuiltin() {
+    const version = ++readVersion.current;
+    setImporting(true);
+    setLoading(false);
+    setError("");
+    try {
+      // Ne supprimer l’import local qu’après lecture et validation de la source initiale.
+      const next = await fetchBuiltin();
+      if (version !== readVersion.current) return;
+      const removed = await clearStoredWorkbook(
+        () => version === readVersion.current,
+      );
+      if (removed && version === readVersion.current) {
+        applyData(next);
+        setSavedImport(null);
+        setSourceKind("builtin");
+        setRestoredImport(false);
+        setStorageNotice("");
+      }
+    } catch (e) {
+      if (version === readVersion.current)
+        setError(
+          e instanceof Error
+            ? e.message
+            : "Impossible de revenir au fichier initial.",
+        );
+    } finally {
+      if (version === readVersion.current) setImporting(false);
+    }
+  }
   useEffect(() => {
     void loadSource();
+    return () => {
+      readVersion.current++;
+    };
   }, []);
   useEffect(() => {
     setPage(0);
@@ -173,8 +249,28 @@ export default function App() {
         throw new Error(
           "Le fichier dépasse 10 Mo. Utilisez un classeur plus léger.",
         );
-      const next = parseWorkbook(await file.arrayBuffer(), file.name);
-      if (version === readVersion.current) applyData(next);
+      const buffer = await file.arrayBuffer();
+      const next = parseWorkbook(buffer, file.name);
+      if (version !== readVersion.current) return;
+      const savedAt = new Date().toISOString();
+      try {
+        const saved = await saveStoredWorkbook(
+          { name: file.name, buffer, savedAt },
+          () => version === readVersion.current,
+        );
+        if (!saved || version !== readVersion.current) return;
+      } catch {
+        throw new Error(
+          "Impossible d’enregistrer cet import sur cet appareil. Vérifiez que le stockage du navigateur est autorisé et dispose d’espace (hors navigation privée). Le nouveau fichier n’a pas remplacé la sauvegarde précédente.",
+        );
+      }
+      if (version === readVersion.current) {
+        applyData(next);
+        setSavedImport({ name: file.name, savedAt });
+        setSourceKind("local");
+        setRestoredImport(false);
+        setStorageNotice("");
+      }
     } catch (e) {
       if (version === readVersion.current)
         setError(
@@ -398,8 +494,8 @@ export default function App() {
             Une vue plus claire.
           </strong>
           <p>
-            Les données restent dans cette session du navigateur lors d’un
-            nouvel import.
+            Le dernier Excel importé est conservé sur cet appareil et retrouvé
+            après actualisation, dans ce même navigateur et à cette adresse.
           </p>
           <button onClick={() => upload.current?.click()}>
             Changer de fichier <ArrowRight size={14} />
@@ -450,7 +546,11 @@ export default function App() {
                     ? "Classeur précédent conservé"
                     : "Source indisponible"
                   : dataset
-                    ? "Classeur chargé"
+                    ? sourceKind === "local"
+                      ? restoredImport
+                        ? "Import restauré"
+                        : "Import enregistré sur cet appareil"
+                      : "Classeur chargé"
                     : "Aucune source"}
           </span>
         </header>
@@ -522,6 +622,101 @@ export default function App() {
             hidden
             onChange={(e) => void importFile(e.target.files?.[0])}
           />
+          {storageNotice && (
+            <div className="local-storage-warning" role="status">
+              <CircleHelp size={18} />
+              <p>{storageNotice}</p>
+              <button
+                className="text-button"
+                disabled={loading || importing}
+                onClick={() => void loadSource()}
+              >
+                Réessayer la restauration
+              </button>
+            </div>
+          )}
+          {savedImport && sourceKind === "local" && (
+            <section
+              className="local-import-info"
+              aria-label="Classeur enregistré localement"
+            >
+              <ShieldCheck size={19} />
+              <div>
+                <strong>
+                  {restoredImport
+                    ? "Votre import a été restauré"
+                    : "Votre import est enregistré sur cet appareil"}
+                </strong>
+                <p>
+                  {savedImport.name} · Enregistré le{" "}
+                  {new Date(savedImport.savedAt).toLocaleString("fr-FR")}.
+                </p>
+                <small>
+                  Retrouvé après actualisation à cette adresse, dans le même
+                  navigateur. Conservez votre fichier original ; pas de
+                  synchronisation entre appareils.
+                </small>
+              </div>
+              <button
+                className="btn"
+                disabled={loading || importing}
+                onClick={() => setConfirmRestore(true)}
+              >
+                Revenir au fichier initial
+              </button>
+              {confirmRestore && (
+                <div
+                  className="local-import-confirm"
+                  role="group"
+                  aria-label="Confirmer le retour au fichier initial"
+                >
+                  <p>
+                    Le retour retirera uniquement la copie enregistrée dans ce
+                    navigateur. Votre fichier Excel original sur l’ordinateur ne
+                    sera pas supprimé.
+                  </p>
+                  <button
+                    className="btn primary"
+                    disabled={loading || importing}
+                    onClick={() => void restoreBuiltin()}
+                  >
+                    Confirmer le retour
+                  </button>
+                  <button
+                    className="btn"
+                    onClick={() => setConfirmRestore(false)}
+                  >
+                    Annuler
+                  </button>
+                </div>
+              )}
+            </section>
+          )}
+          {!loading && dataset && sourceKind === "builtin" && !savedImport && (
+            <section
+              className="local-import-info local-import-prompt"
+              aria-label="Importer et conserver votre Excel"
+            >
+              <ShieldCheck size={19} />
+              <div>
+                <strong>
+                  Aucun import personnel n’est mémorisé dans ce navigateur
+                </strong>
+                <p>
+                  Importez votre Excel une fois pour le retrouver après les
+                  prochains rafraîchissements, à cette même adresse. Les imports
+                  perdus avant cette mise à jour doivent être réimportés.
+                </p>
+              </div>
+              <button
+                className="btn primary"
+                disabled={importing}
+                onClick={() => upload.current?.click()}
+              >
+                Importer mon Excel
+              </button>
+            </section>
+          )}
           {error && (
             <div role="alert" className="error-banner">
               <CircleHelp size={18} />
@@ -1169,9 +1364,12 @@ export default function App() {
                     <div className="quality-info">
                       <ShieldCheck size={22} />
                       <p>
-                        L’import d’un autre classeur remplace uniquement les
-                        données de cette session. Aucun fichier n’est envoyé à
-                        un serveur par l’application.
+                        Le dernier import est enregistré dans le stockage local
+                        de ce navigateur et restauré après actualisation, à
+                        cette même adresse. Aucun classeur importé n’est envoyé
+                        à un serveur par l’application. L’effacement des données
+                        du navigateur peut supprimer la sauvegarde : gardez
+                        votre Excel original.
                       </p>
                     </div>
                   </article>

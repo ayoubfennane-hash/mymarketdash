@@ -87,8 +87,10 @@ export default function UserGuide({
               <p>
                 Ouvrez et enregistrez le fichier dans Excel pour recalculer les
                 formules, puis choisissez un fichier .xlsx ou .xls de 10 Mo
-                maximum. Un import réussi remplace les données de la session et
-                réinitialise les filtres. Un échec conserve le jeu précédent.
+                maximum. Un import réussi valide puis enregistre le classeur sur
+                cet appareil, remplace les données et réinitialise les filtres.
+                Un fichier invalide ou un échec de stockage conserve le jeu et
+                la sauvegarde précédents.
               </p>
               <button className="btn primary" onClick={onImport}>
                 <Upload size={15} />
@@ -100,8 +102,13 @@ export default function UserGuide({
               <p>
                 La vue Qualité des données indique le fichier chargé, sa
                 feuille, sa période et les anomalies de lecture. Un fichier
-                importé n’est pas enregistré durablement : une actualisation
-                recharge la source incluse dans le site.
+                importé est enregistré sur cet appareil et restauré après
+                actualisation à cette même adresse. Vérifiez le message « Import
+                enregistré sur cet appareil ». Les imports perdus avant cette
+                mise à jour ne peuvent pas être récupérés : réimportez votre
+                Excel une fois. Gardez le fichier original : effacer les données
+                du navigateur ou utiliser la navigation privée peut supprimer ou
+                empêcher la sauvegarde.
               </p>
               <button
                 className="text-button"
@@ -295,7 +302,12 @@ export default function UserGuide({
               <p>
                 Il apporte les références, fournisseurs, mouvements mensuels,
                 stocks et états. L’import d’un nouveau classeur remplace ces
-                données uniquement pour la session du navigateur.
+                données et enregistre le dernier import dans le stockage de ce
+                navigateur. Il est restauré après actualisation. Cette
+                sauvegarde n’est pas partagée entre appareils, navigateurs ou
+                adresses (aperçu et site publié). Le bouton « Revenir au fichier
+                initial » retire cette sauvegarde locale après confirmation,
+                sans effacer votre Excel d’origine.
               </p>
             </article>
             <article>

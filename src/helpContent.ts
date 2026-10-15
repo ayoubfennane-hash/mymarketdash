@@ -61,7 +61,7 @@ export const commonQuestions = [
   {
     question: "Mon fichier importé reste-t-il enregistré après actualisation ?",
     answer:
-      "Non. L’import Excel est lu localement dans le navigateur et n’est pas enregistré durablement par l’application. Après actualisation, le classeur fourni avec le site est rechargé. Gardez votre fichier sur votre ordinateur pour le réimporter. Les fichiers fournis avec le projet restent, eux, accessibles dans cet aperçu ; ce n’est pas une synchronisation de la boutique.",
+      "Oui, après un import réussi : le dernier classeur validé est enregistré sur cet appareil et rechargé automatiquement après actualisation. Le nom et la date de sauvegarde sont affichés. Cette conservation concerne le même navigateur et la même adresse ; l’aperçu et le site publié peuvent avoir des stockages distincts. La navigation privée, l’effacement des données du navigateur ou le manque d’espace peuvent empêcher ou supprimer cette conservation. Gardez votre Excel original. Les anciens imports perdus avant cette correction doivent être réimportés une fois. Ce n’est pas une sauvegarde cloud ni une synchronisation de la boutique. Les filtres sont réinitialisés au rechargement.",
   },
   {
     question: "Puis-je importer directement un nouveau CSV de catégories ?",
