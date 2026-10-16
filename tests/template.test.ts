@@ -77,7 +77,7 @@ describe("Modèle de téléchargement MYMARKET", () => {
       type: "array",
       bookType: "xlsx",
     }) as ArrayBuffer;
-    const parsed = parseWorkbook(binary, "modèle");
+    const parsed = parseWorkbook(binary, "modèle.xlsx");
     expect(parsed.products).toHaveLength(1);
     expect(parsed.products[0].sku).toBe("0012345");
     expect(

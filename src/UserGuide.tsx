@@ -87,10 +87,15 @@ export default function UserGuide({
               <p>
                 Ouvrez et enregistrez le fichier dans Excel pour recalculer les
                 formules, puis choisissez un fichier .xlsx ou .xls de 10 Mo
-                maximum. Un import réussi valide puis enregistre le classeur sur
-                cet appareil, remplace les données et réinitialise les filtres.
-                Un fichier invalide ou un échec de stockage conserve le jeu et
-                la sauvegarde précédents.
+                maximum. Le classeur doit contenir exactement les 28 colonnes du
+                modèle, jusqu’à 10 000 lignes de produits ; pour un .xlsx, le
+                contenu décompressé est limité à 24 Mo (16 Mo par élément).
+                Connecté avec Manus, un import réussi valide puis enregistre le
+                classeur dans votre compte privé et le retrouve sur vos autres
+                appareils. Sans connexion, il reste sur cet appareil. L’import
+                remplace l’analyse et réinitialise les filtres ; un fichier
+                invalide ou un échec de sauvegarde conserve le jeu et la
+                sauvegarde précédents.
               </p>
               <button className="btn primary" onClick={onImport}>
                 <Upload size={15} />
@@ -102,13 +107,15 @@ export default function UserGuide({
               <p>
                 La vue Qualité des données indique le fichier chargé, sa
                 feuille, sa période et les anomalies de lecture. Un fichier
-                importé est enregistré sur cet appareil et restauré après
-                actualisation à cette même adresse. Vérifiez le message « Import
-                enregistré sur cet appareil ». Les imports perdus avant cette
-                mise à jour ne peuvent pas être récupérés : réimportez votre
-                Excel une fois. Gardez le fichier original : effacer les données
-                du navigateur ou utiliser la navigation privée peut supprimer ou
-                empêcher la sauvegarde.
+                importé est enregistré dans le cloud si vous êtes connecté avec
+                Manus ; vérifiez « Import enregistré dans votre compte ».
+                Connectez-vous au même compte sur un autre appareil pour le
+                retrouver. Un ancien import local n’est pas envoyé
+                automatiquement : utilisez « Enregistrer cet import local dans
+                mon compte ». Sans connexion, vérifiez « Import enregistré sur
+                cet appareil » ; cette copie dépend du navigateur. Les imports
+                déjà perdus ne sont pas récupérables : réimportez votre Excel
+                une fois et gardez l’original.
               </p>
               <button
                 className="text-button"
@@ -302,12 +309,15 @@ export default function UserGuide({
               <p>
                 Il apporte les références, fournisseurs, mouvements mensuels,
                 stocks et états. L’import d’un nouveau classeur remplace ces
-                données et enregistre le dernier import dans le stockage de ce
-                navigateur. Il est restauré après actualisation. Cette
-                sauvegarde n’est pas partagée entre appareils, navigateurs ou
-                adresses (aperçu et site publié). Le bouton « Revenir au fichier
-                initial » retire cette sauvegarde locale après confirmation,
-                sans effacer votre Excel d’origine.
+                données. Connecté, le dernier import est stocké dans la base
+                privée de ce projet, avec accès limité à votre identité Manus.
+                Un compte ne peut ouvrir que son propre fichier ; le nouveau
+                classeur valide remplace le précédent, sans historique de
+                versions. Déconnexion et consultation du fichier initial ne
+                suppriment pas votre import cloud. Sans connexion, la copie
+                locale ne se partage pas entre appareils, navigateurs ou
+                adresses; revenir au fichier initial retire cette copie locale
+                après confirmation, sans effacer votre Excel d’origine.
               </p>
             </article>
             <article>
@@ -346,9 +356,11 @@ export default function UserGuide({
           </p>
           <p>
             Il n’y a pas de connexion automatique à MYMARKET.ma : les données
-            reflètent les fichiers fournis, pas l’état actuel de la boutique.
-            L’import local n’envoie pas votre nouveau classeur à la boutique ou
-            à un serveur de stockage.
+            reflètent les fichiers fournis, pas l’état actuel de la boutique. Le
+            mode invité local n’envoie aucun classeur au serveur de stockage.
+            Après connexion Manus, un nouvel import ou l’action explicite de
+            sauvegarde locale envoie votre Excel au serveur privé du site. Il
+            n’est ni ajouté au dépôt GitHub ni synchronisé vers la boutique.
           </p>
           <button className="text-button" onClick={() => onNavigate("quality")}>
             Consulter la provenance et les anomalies <ArrowRight size={14} />

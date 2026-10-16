@@ -37,11 +37,23 @@ import {
   YAxis,
 } from "recharts";
 import { parseWorkbook, type Dataset } from "./data";
+import { MAX_WORKBOOK_BYTES } from "./xlsxLimits";
 import { useDialogFocus } from "./useDialogFocus";
 import CategoryPanel from "./CategoryPanel";
 import UserGuide from "./UserGuide";
 import ReadingAid from "./ReadingAid";
 import SupplierSelect from "./SupplierSelect";
+import AccountPanel from "./AccountPanel";
+import {
+  getCloudAccount,
+  readCloudWorkbook,
+  saveCloudWorkbook,
+  logoutCloud,
+  downloadCloudWorkbook,
+  type CloudAccount,
+  type CloudWorkbookMeta,
+} from "./cloudClient";
+
 import {
   readStoredWorkbook,
   saveStoredWorkbook,
@@ -95,7 +107,14 @@ export default function App() {
   } | null>(null);
   const [restoredImport, setRestoredImport] = useState(false);
   const [confirmRestore, setConfirmRestore] = useState(false);
-  const [sourceKind, setSourceKind] = useState<"builtin" | "local">("builtin");
+  const [sourceKind, setSourceKind] = useState<"builtin" | "local" | "cloud">(
+    "builtin",
+  );
+  const [account, setAccount] = useState<CloudAccount | null>(null);
+  const [accountBusy, setAccountBusy] = useState(false);
+  const [accountError, setAccountError] = useState("");
+  const [cloudMeta, setCloudMeta] = useState<CloudWorkbookMeta | null>(null);
+  const [cloudReady, setCloudReady] = useState(false);
 
   const [view, setView] = useState<
     "overview" | "catalogue" | "quality" | "guide"
@@ -156,6 +175,49 @@ export default function App() {
     setError("");
     setStorageNotice("");
     try {
+      setAccountError("");
+      setCloudReady(false);
+      let session: CloudAccount | null = null;
+      try {
+        session = await getCloudAccount();
+      } catch {
+        if (version === readVersion.current)
+          setAccountError(
+            "Connexion cloud indisponible. Les données précédentes restent lisibles ; aucune nouvelle sauvegarde en ligne n’est confirmée.",
+          );
+        if (dataset) return;
+      }
+      if (version !== readVersion.current) return;
+      setAccount(session);
+      if (!session) setCloudMeta(null);
+      if (session) {
+        try {
+          const cloud = await readCloudWorkbook();
+          if (version !== readVersion.current) return;
+          if (cloud) {
+            const next = parseWorkbook(cloud.buffer, cloud.name);
+            const { buffer: _, ...meta } = cloud;
+            setCloudMeta(meta);
+            setCloudReady(true);
+            applyData(next);
+            setSourceKind("cloud");
+            setSavedImport(null);
+            setRestoredImport(true);
+            return;
+          }
+          setCloudMeta(null);
+          setCloudReady(true);
+        } catch (e) {
+          if (version !== readVersion.current) return;
+          setAccountError(
+            e instanceof Error
+              ? e.message
+              : "Votre fichier cloud n’a pas pu être restauré. Réessayez.",
+          );
+          // Ne remplacer pas le fichier actuellement affiché sur un échec cloud.
+          if (dataset) return;
+        }
+      }
       try {
         const stored = await readStoredWorkbook();
         if (version !== readVersion.current) return;
@@ -198,9 +260,11 @@ export default function App() {
       // Ne supprimer l’import local qu’après lecture et validation de la source initiale.
       const next = await fetchBuiltin();
       if (version !== readVersion.current) return;
-      const removed = await clearStoredWorkbook(
-        () => version === readVersion.current,
-      );
+      // Le retour change l’analyse mais ne supprime jamais le fichier cloud.
+      const removed =
+        sourceKind === "cloud"
+          ? true
+          : await clearStoredWorkbook(() => version === readVersion.current);
       if (removed && version === readVersion.current) {
         applyData(next);
         setSavedImport(null);
@@ -245,13 +309,34 @@ export default function App() {
     try {
       if (!/\.xlsx?$/i.test(file.name))
         throw new Error("Sélectionnez un classeur Excel .xlsx ou .xls.");
-      if (file.size > 10 * 1024 * 1024)
+      if (file.size > MAX_WORKBOOK_BYTES)
         throw new Error(
           "Le fichier dépasse 10 Mo. Utilisez un classeur plus léger.",
         );
       const buffer = await file.arrayBuffer();
       const next = parseWorkbook(buffer, file.name);
       if (version !== readVersion.current) return;
+      if (account) {
+        if (!cloudReady)
+          throw new Error(
+            "Vérifiez votre espace cloud avant d’enregistrer un nouveau classeur.",
+          );
+        const meta = await saveCloudWorkbook(
+          buffer,
+          file.name,
+          account,
+          cloudMeta,
+        );
+        if (version !== readVersion.current) return;
+        applyData(next);
+        setCloudMeta(meta);
+        setSourceKind("cloud");
+        setSavedImport(null);
+        setRestoredImport(false);
+        setStorageNotice("");
+        setAccountError("");
+        return;
+      }
       const savedAt = new Date().toISOString();
       try {
         const saved = await saveStoredWorkbook(
@@ -282,6 +367,55 @@ export default function App() {
         if (upload.current) upload.current.value = "";
       }
     }
+  }
+  async function accountAction(action: () => Promise<void>) {
+    setAccountBusy(true);
+    setAccountError("");
+    try {
+      await action();
+    } catch (e) {
+      setAccountError(
+        e instanceof Error ? e.message : "Action cloud impossible. Réessayez.",
+      );
+    } finally {
+      setAccountBusy(false);
+    }
+  }
+  async function publishLocalImport() {
+    if (!account || !cloudReady)
+      throw new Error("Connectez-vous et vérifiez votre espace cloud.");
+    const version = ++readVersion.current;
+    const stored = await readStoredWorkbook();
+    if (!stored)
+      throw new Error(
+        "Aucun import local enregistré à envoyer. Importez votre Excel.",
+      );
+    const next = parseWorkbook(stored.buffer, stored.name);
+    if (version !== readVersion.current) return;
+    const meta = await saveCloudWorkbook(
+      stored.buffer,
+      stored.name,
+      account,
+      cloudMeta,
+    );
+    if (version !== readVersion.current) return;
+    applyData(next);
+    setCloudMeta(meta);
+    setSourceKind("cloud");
+    setSavedImport(null);
+    setRestoredImport(false);
+    setStorageNotice("");
+  }
+  async function signOut() {
+    if (!account) return;
+    await logoutCloud(account);
+    setAccount(null);
+    setCloudMeta(null);
+    setCloudReady(false);
+    setDataset(null);
+    setSavedImport(null);
+    setSourceKind("builtin");
+    await loadSource();
   }
   const filtered = useMemo(
     () =>
@@ -494,8 +628,9 @@ export default function App() {
             Une vue plus claire.
           </strong>
           <p>
-            Le dernier Excel importé est conservé sur cet appareil et retrouvé
-            après actualisation, dans ce même navigateur et à cette adresse.
+            Connecté avec Manus : votre dernier Excel est conservé dans votre
+            espace privé cloud et retrouvé sur vos appareils. Sans connexion :
+            l’import reste dans ce navigateur.
           </p>
           <button onClick={() => upload.current?.click()}>
             Changer de fichier <ArrowRight size={14} />
@@ -546,11 +681,15 @@ export default function App() {
                     ? "Classeur précédent conservé"
                     : "Source indisponible"
                   : dataset
-                    ? sourceKind === "local"
+                    ? sourceKind === "cloud"
                       ? restoredImport
-                        ? "Import restauré"
-                        : "Import enregistré sur cet appareil"
-                      : "Classeur chargé"
+                        ? "Import cloud restauré"
+                        : "Import enregistré dans votre compte"
+                      : sourceKind === "local"
+                        ? restoredImport
+                          ? "Import restauré"
+                          : "Import enregistré sur cet appareil"
+                        : "Classeur chargé"
                     : "Aucune source"}
           </span>
         </header>
@@ -591,7 +730,7 @@ export default function App() {
               <button
                 className="btn"
                 onClick={() => upload.current?.click()}
-                disabled={importing}
+                disabled={importing || accountBusy}
               >
                 <Upload size={16} />
                 {importing ? "Lecture…" : "Importer Excel"}
@@ -622,6 +761,42 @@ export default function App() {
             hidden
             onChange={(e) => void importFile(e.target.files?.[0])}
           />
+          <AccountPanel
+            account={account}
+            pending={accountBusy || loading || importing}
+            error={accountError}
+            ready={cloudReady}
+            workbook={cloudMeta}
+            currentSource={sourceKind}
+            localImport={sourceKind === "local" && Boolean(savedImport)}
+            onLogout={() => void accountAction(signOut)}
+            onReload={() => void loadSource()}
+            onUploadLocal={() => void accountAction(publishLocalImport)}
+            onDownload={() => void accountAction(downloadCloudWorkbook)}
+            onReturnDefault={() => setConfirmRestore(true)}
+          />
+          {confirmRestore && sourceKind === "cloud" && (
+            <div
+              className="local-storage-warning"
+              role="group"
+              aria-label="Confirmer la consultation du fichier initial"
+            >
+              <p>
+                Afficher le fichier de référence MYMARKET ? Votre classeur cloud
+                reste enregistré dans votre compte et peut être restauré.
+              </p>
+              <button
+                className="btn primary"
+                disabled={accountBusy || importing}
+                onClick={() => void restoreBuiltin()}
+              >
+                Confirmer l’affichage
+              </button>
+              <button className="btn" onClick={() => setConfirmRestore(false)}>
+                Annuler
+              </button>
+            </div>
+          )}
           {storageNotice && (
             <div className="local-storage-warning" role="status">
               <CircleHelp size={18} />
@@ -692,31 +867,36 @@ export default function App() {
               )}
             </section>
           )}
-          {!loading && dataset && sourceKind === "builtin" && !savedImport && (
-            <section
-              className="local-import-info local-import-prompt"
-              aria-label="Importer et conserver votre Excel"
-            >
-              <ShieldCheck size={19} />
-              <div>
-                <strong>
-                  Aucun import personnel n’est mémorisé dans ce navigateur
-                </strong>
-                <p>
-                  Importez votre Excel une fois pour le retrouver après les
-                  prochains rafraîchissements, à cette même adresse. Les imports
-                  perdus avant cette mise à jour doivent être réimportés.
-                </p>
-              </div>
-              <button
-                className="btn primary"
-                disabled={importing}
-                onClick={() => upload.current?.click()}
+          {!account &&
+            !loading &&
+            dataset &&
+            sourceKind === "builtin" &&
+            !savedImport && (
+              <section
+                className="local-import-info local-import-prompt"
+                aria-label="Importer et conserver votre Excel"
               >
-                Importer mon Excel
-              </button>
-            </section>
-          )}
+                <ShieldCheck size={19} />
+                <div>
+                  <strong>
+                    Aucun import personnel n’est mémorisé dans ce navigateur
+                  </strong>
+                  <p>
+                    Importez votre Excel une fois pour le retrouver après les
+                    prochains rafraîchissements, à cette même adresse. Les
+                    imports perdus avant cette mise à jour doivent être
+                    réimportés.
+                  </p>
+                </div>
+                <button
+                  className="btn primary"
+                  disabled={importing || accountBusy}
+                  onClick={() => upload.current?.click()}
+                >
+                  Importer mon Excel
+                </button>
+              </section>
+            )}
           {error && (
             <div role="alert" className="error-banner">
               <CircleHelp size={18} />
@@ -1364,12 +1544,12 @@ export default function App() {
                     <div className="quality-info">
                       <ShieldCheck size={22} />
                       <p>
-                        Le dernier import est enregistré dans le stockage local
-                        de ce navigateur et restauré après actualisation, à
-                        cette même adresse. Aucun classeur importé n’est envoyé
-                        à un serveur par l’application. L’effacement des données
-                        du navigateur peut supprimer la sauvegarde : gardez
-                        votre Excel original.
+                        Connecté avec Manus, le dernier import est enregistré
+                        dans la base privée du projet et retrouvé sur vos
+                        appareils après connexion au même compte. Sans
+                        connexion, il reste dans ce navigateur. Les imports
+                        personnels ne sont pas ajoutés à GitHub ni synchronisés
+                        vers la boutique. Conservez votre Excel original.
                       </p>
                     </div>
                   </article>

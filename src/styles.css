@@ -2617,3 +2617,126 @@ th[aria-sort="descending"] {
     flex-basis: 100%;
   }
 }
+
+.account-panel {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 15px;
+  padding: 20px 22px;
+  margin: 0 0 20px;
+  border: 1px solid #dce6da;
+  border-radius: 10px;
+  background: #f1f7ee;
+  font-size: 12px;
+  line-height: 1.8;
+}
+.account-panel.guest {
+  background: #f6f7f3;
+}
+.account-intro {
+  display: flex;
+  gap: 13px;
+  align-items: center;
+  flex: 1;
+  min-width: 240px;
+}
+.account-icon {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #e3eedf;
+  color: #377958;
+  flex-shrink: 0;
+}
+.account-intro strong {
+  font-size: 13px;
+  color: #355e43;
+}
+.account-intro p {
+  margin: 2px 0 0;
+  font-size: 11px;
+  color: #75826f;
+}
+.account-actions {
+  margin-left: auto;
+}
+.account-actions .text-button,
+.cloud-actions .text-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+.cloud-file-status {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  flex: 0 0 100%;
+  border-top: 1px solid #dce6da;
+  padding-top: 14px;
+  min-width: 0;
+}
+.cloud-file-status svg {
+  color: #43835f;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+.cloud-file-status strong {
+  font-size: 12px;
+  color: #43604b;
+}
+.cloud-file-status p {
+  margin: 3px 0;
+  color: #72806d;
+  font-size: 11px;
+  overflow-wrap: anywhere;
+}
+.cloud-file-status small {
+  display: block;
+  color: #71826a;
+  font-size: 10px;
+}
+.cloud-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 9px;
+  flex: 0 0 100%;
+  padding-left: 27px;
+}
+.account-error {
+  flex: 0 0 100%;
+  background: #fff3e4;
+  border: 1px solid #edddbd;
+  padding: 11px 13px;
+  border-radius: 6px;
+  margin: 0;
+  color: #8e7040;
+  font-size: 11px;
+}
+@media (max-width: 700px) {
+  .account-panel {
+    padding: 16px;
+    gap: 12px;
+  }
+  .account-actions {
+    margin-left: 51px;
+  }
+  .account-intro {
+    min-width: 0;
+    flex-basis: 100%;
+  }
+  .cloud-actions {
+    padding-left: 0;
+  }
+  .cloud-actions .btn {
+    width: 100%;
+    justify-content: center;
+  }
+  .account-intro p {
+    overflow-wrap: anywhere;
+  }
+}

@@ -61,12 +61,12 @@ export const commonQuestions = [
   {
     question: "Mon fichier importé reste-t-il enregistré après actualisation ?",
     answer:
-      "Oui, après un import réussi : le dernier classeur validé est enregistré sur cet appareil et rechargé automatiquement après actualisation. Le nom et la date de sauvegarde sont affichés. Cette conservation concerne le même navigateur et la même adresse ; l’aperçu et le site publié peuvent avoir des stockages distincts. La navigation privée, l’effacement des données du navigateur ou le manque d’espace peuvent empêcher ou supprimer cette conservation. Gardez votre Excel original. Les anciens imports perdus avant cette correction doivent être réimportés une fois. Ce n’est pas une sauvegarde cloud ni une synchronisation de la boutique. Les filtres sont réinitialisés au rechargement.",
+      "Oui. Connecté avec Manus, un import réussi est enregistré dans votre espace privé cloud et restauré après connexion au même compte sur un autre appareil de ce site. Le panneau affiche le fichier, sa date et ses actions de restauration/téléchargement. Un seul dernier classeur par compte est conservé : un nouveau fichier valide le remplace. Un conflit avec une modification plus récente sur un autre appareil est refusé ; restaurez d’abord le fichier actuel. Sans connexion, l’import reste uniquement dans le navigateur et à cette adresse ; effacer ses données ou utiliser un autre appareil ne le retrouve pas. Le bouton d’enregistrement d’un ancien import local constitue une action explicite : rien n’est téléversé automatiquement. Gardez votre Excel original ; les imports déjà perdus doivent être réimportés. Les catégories CSV et les filtres ne sont pas synchronisés avec Shopify.",
   },
   {
     question: "Puis-je importer directement un nouveau CSV de catégories ?",
     answer:
-      "Pas depuis ce bouton : « Importer Excel » accepte uniquement un classeur .xlsx ou .xls, jusqu’à 10 Mo. Le CSV de catégories fourni est déjà intégré comme base de rapprochement. Son actualisation nécessite une mise à jour de cette base ; elle n’est pas automatique et l’import d’un Excel ne la remplace pas.",
+      "Pas depuis ce bouton : « Importer Excel » accepte un classeur .xlsx ou .xls de 10 Mo maximum, avec exactement les 28 colonnes du modèle et jusqu’à 10 000 lignes de produits. Pour .xlsx, le contenu décompressé est limité à 24 Mo au total (16 Mo par élément). Le CSV de catégories fourni est déjà intégré comme base de rapprochement. Son actualisation nécessite une mise à jour de cette base ; elle n’est pas automatique et l’import d’un Excel ne la remplace pas.",
   },
   {
     question: "Comment préparer un modèle vierge avant de l’importer ?",

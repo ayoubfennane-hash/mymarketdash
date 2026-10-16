@@ -10,6 +10,16 @@ vi.mock("../src/workbookStorage", () => ({
   saveStoredWorkbook: async () => true,
   clearStoredWorkbook: async () => true,
 }));
+vi.mock("../src/cloudClient", () => ({
+  getCloudAccount: async () => null,
+  readCloudWorkbook: async () => null,
+  saveCloudWorkbook: async () => {
+    throw new Error("unused in local test");
+  },
+  beginManusLogin: async () => {},
+  logoutCloud: async () => {},
+  downloadCloudWorkbook: async () => {},
+}));
 vi.mock("recharts", () => ({
   Area: () => null,
   AreaChart: () => null,
